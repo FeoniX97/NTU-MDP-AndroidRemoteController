@@ -26,8 +26,6 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -53,15 +51,12 @@ public class MainActivity extends AppCompatActivity {
     private TextView mBluetoothStatus;
     private TextView mReadBuffer;
     private TextView mDevicesDialogTitle;
-    private Button mScanBtn;
-    private Button mOffBtn;
-    private Button mListPairedDevicesBtn;
-    private Button mDiscoverBtn;
     private ListView mDevicesListView;
-    private CheckBox mLED1;
     private Dialog mDevicesDialog;
-    private EditText mMessage;
-    private Button mSendMsg;
+    private Button mTurnLeft;
+    private Button mTurnRight;
+    private Button mForward;
+    private Button mReverse;
 
     private BluetoothAdapter mBTAdapter;
     private Set<BluetoothDevice> mPairedDevices;
@@ -78,10 +73,10 @@ public class MainActivity extends AppCompatActivity {
 
         mBluetoothStatus = (TextView)findViewById(R.id.bluetooth_status);
         mReadBuffer = (TextView) findViewById(R.id.read_buffer);
-        mDiscoverBtn = (Button)findViewById(R.id.connect);
-        mLED1 = (CheckBox)findViewById(R.id.checkbox_led_1);
-        mMessage = (EditText) findViewById(R.id.tb_message);
-        mSendMsg = (Button)findViewById(R.id.btn_send_msg);
+        mTurnLeft = (Button) findViewById(R.id.btn_left);
+        mTurnRight = (Button) findViewById(R.id.btn_right);
+        mForward = (Button) findViewById(R.id.btn_forward);
+        mReverse = (Button) findViewById(R.id.btn_reverse);
 
         mBTArrayAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
         mBTAdapter = BluetoothAdapter.getDefaultAdapter(); // get a handle on the bluetooth radio
@@ -102,18 +97,12 @@ public class MainActivity extends AppCompatActivity {
                 if(msg.what == CONNECTING_STATUS){
                     char[] sConnected;
                     if(msg.arg1 == 1)
-                        mBluetoothStatus.setText(getString(R.string.BTConnected) + msg.obj);
+                        mBluetoothStatus.setText(getString(R.string.BTConnected) + " " + msg.obj);
                     else
                         mBluetoothStatus.setText(getString(R.string.BTconnFail));
                 }
             }
         };
-
-        mSendMsg.setOnClickListener(view -> {
-            String message = mMessage.getText().toString();
-            if(mConnectedThread != null) //First check to make sure thread created
-                mConnectedThread.write(message);
-        });
 
         if (mBTArrayAdapter == null) {
             // Device does not support Bluetooth
@@ -121,43 +110,25 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(getApplicationContext(),getString(R.string.sBTdevNF),Toast.LENGTH_SHORT).show();
         }
         else {
-
-            mLED1.setOnClickListener(new View.OnClickListener(){
-                @Override
-                public void onClick(View v){
-                    if(mConnectedThread != null) //First check to make sure thread created
-                        mConnectedThread.write("1");
-                }
+            mForward.setOnClickListener(view -> {
+                if(mConnectedThread != null) //First check to make sure thread created
+                    mConnectedThread.write("f");
             });
 
+            mReverse.setOnClickListener(view -> {
+                if(mConnectedThread != null) //First check to make sure thread created
+                    mConnectedThread.write("r");
+            });
 
-//            mScanBtn.setOnClickListener(new View.OnClickListener() {
-//                @Override
-//                public void onClick(View v) {
-//                    bluetoothOn();
-//                }
-//            });
-//
-//            mOffBtn.setOnClickListener(new View.OnClickListener(){
-//                @Override
-//                public void onClick(View v){
-//                    bluetoothOff();
-//                }
-//            });
-//
-//            mListPairedDevicesBtn.setOnClickListener(new View.OnClickListener() {
-//                @Override
-//                public void onClick(View v){
-//                    listPairedDevices();
-//                }
-//            });
-//
-//            mDiscoverBtn.setOnClickListener(new View.OnClickListener(){
-//                @Override
-//                public void onClick(View v){
-//                    discover();
-//                }
-//            });
+            mTurnLeft.setOnClickListener(view -> {
+                if(mConnectedThread != null) //First check to make sure thread created
+                    mConnectedThread.write("tl");
+            });
+
+            mTurnRight.setOnClickListener(view -> {
+                if(mConnectedThread != null) //First check to make sure thread created
+                    mConnectedThread.write("tr");
+            });
         }
     }
 
@@ -182,8 +153,7 @@ public class MainActivity extends AppCompatActivity {
                 listPairedDevices();
                 return true;
             case R.id.connect:
-                //connectSavedDevice(null, null);
-                connectSavedDeviceEx();
+                connectSavedDevice(null, null);
                 //discover();
                 return true;
             default:
@@ -326,64 +296,10 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private void connectSavedDevice(String name, String address) {
-        if(!mBTAdapter.isEnabled()) {
-            Toast.makeText(getBaseContext(), getString(R.string.BTnotOn), Toast.LENGTH_SHORT).show();
-            return;
-        }
-
         if (name == null || address == null) {
             name = "DESKTOP-0RLC4T3";
             address = "48:89:E7:C8:BB:E8";
         }
-
-        mBluetoothStatus.setText(getString(R.string.cConnet));
-
-        // Spawn a new thread to avoid blocking the GUI one
-        String finalAddress = address;
-        String finalName = name;
-        new Thread()
-        {
-            @Override
-            public void run() {
-                boolean fail = false;
-
-                BluetoothDevice device = mBTAdapter.getRemoteDevice(finalAddress);
-
-                try {
-                    mBTSocket = createBluetoothSocket(device);
-                } catch (IOException e) {
-                    fail = true;
-                    Toast.makeText(getBaseContext(), getString(R.string.ErrSockCrea), Toast.LENGTH_SHORT).show();
-                }
-                // Establish the Bluetooth socket connection.
-                try {
-                    mBTSocket.connect();
-                } catch (IOException e) {
-                    try {
-                        fail = true;
-                        Log.e(TAG, e.getMessage());
-                        mBTSocket.close();
-                        mHandler.obtainMessage(CONNECTING_STATUS, -1, -1)
-                                .sendToTarget();
-                    } catch (IOException e2) {
-                        //insert code to deal with this
-                        Toast.makeText(getBaseContext(), getString(R.string.ErrSockCrea), Toast.LENGTH_SHORT).show();
-                    }
-                }
-                if(!fail) {
-                    mConnectedThread = new ConnectedThread(mBTSocket, mHandler);
-                    mConnectedThread.start();
-
-                    mHandler.obtainMessage(CONNECTING_STATUS, 1, -1, finalName)
-                            .sendToTarget();
-                }
-            }
-        }.start();
-    }
-
-    private void connectSavedDeviceEx() {
-        String name = "DESKTOP-0RLC4T3";
-        String address = "48:89:E7:C8:BB:E8";
 
         if (mBTAdapter.isEnabled()) {
             BluetoothDevice device = mBTAdapter.getRemoteDevice(address);

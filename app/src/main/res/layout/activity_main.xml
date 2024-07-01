@@ -4,6 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:layout_marginTop="15dp"
+    android:gravity="bottom|center"
     android:orientation="vertical"
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
@@ -11,22 +12,9 @@
     android:paddingBottom="@dimen/activity_vertical_margin"
     tools:context="com.yiwei.androidremotecontroller.MainActivity">
 
-    <CheckBox
-        android:id="@+id/checkbox_led_1"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="10dp"
-        android:checked="false"
-        android:scaleX="1.7"
-        android:scaleY="1.7"
-        android:text="Toggle LED"
-        android:textStyle="bold" />
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
         android:orientation="horizontal">
 
         <TextView
@@ -35,22 +23,24 @@
             android:layout_weight="0.1"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="RX:"
+            android:text="BT:"
             android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/read_buffer"
+            android:id="@+id/bluetooth_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="0.9"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="&lt;Read Buffer>" />
+            android:text="&lt;Bluetooth Status>" />
+
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
         android:orientation="horizontal">
 
         <TextView
@@ -63,35 +53,55 @@
             android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/bluetooth_status"
+            android:id="@+id/read_buffer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="0.9"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="&lt;Bluetooth Status>" />
+            android:text="&lt;Read Buffer>" />
+
     </LinearLayout>
 
     <LinearLayout
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="30dp"
+        android:gravity="bottom"
         android:orientation="horizontal">
 
-        <EditText
-            android:id="@+id/tb_message"
+        <Button
+            android:id="@+id/btn_left"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:ems="10"
-            android:inputType="text"
-            android:text="Name" />
+            android:text="Left" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/btn_forward"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Forward" />
+
+            <Button
+                android:id="@+id/btn_reverse"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Reverse" />
+        </LinearLayout>
 
         <Button
-            android:id="@+id/btn_send_msg"
-            android:layout_width="wrap_content"
+            android:id="@+id/btn_right"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Send" />
+            android:text="Right" />
+
     </LinearLayout>
 
 </LinearLayout>
