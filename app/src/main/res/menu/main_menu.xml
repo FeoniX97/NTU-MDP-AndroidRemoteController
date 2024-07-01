@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/bluetooth_on"
+        android:title="Bluetooth On" />
+    <item
+        android:id="@+id/bluetooth_off"
+        android:title="Bluetooth Off" />
+    <item
+        android:id="@+id/connect"
+        android:title="Connect" />
+    <item
+        android:id="@+id/disconnect"
+        android:title="Disconnect" />
+</menu>
