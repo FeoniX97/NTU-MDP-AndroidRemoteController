@@ -17,6 +17,7 @@ import android.os.Message;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.text.InputType;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -26,9 +27,15 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.yiwei.androidremotecontroller.arena.ArenaView;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -57,6 +64,10 @@ public class MainActivity extends AppCompatActivity {
     private Button mTurnRight;
     private Button mForward;
     private Button mReverse;
+    private EditText mCoord;
+    private EditText mDirection;
+    private EditText mMessage;
+    private Button mSendMsg;
 
     private BluetoothAdapter mBTAdapter;
     private Set<BluetoothDevice> mPairedDevices;
@@ -77,6 +88,15 @@ public class MainActivity extends AppCompatActivity {
         mTurnRight = (Button) findViewById(R.id.btn_right);
         mForward = (Button) findViewById(R.id.btn_forward);
         mReverse = (Button) findViewById(R.id.btn_reverse);
+        mCoord = (EditText) findViewById(R.id.tb_coord);
+        mDirection = (EditText) findViewById(R.id.tb_direction);
+        mMessage = (EditText) findViewById(R.id.tb_message);
+        mSendMsg = (Button) findViewById(R.id.btn_send_msg);
+
+        mCoord.setFocusable(false);
+        mDirection.setFocusable(false);
+        mCoord.setInputType(InputType.TYPE_NULL);
+        mDirection.setInputType(InputType.TYPE_NULL);
 
         mBTArrayAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
         mBTAdapter = BluetoothAdapter.getDefaultAdapter(); // get a handle on the bluetooth radio
@@ -85,6 +105,10 @@ public class MainActivity extends AppCompatActivity {
         if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
 
+        mSendMsg.setOnClickListener(view -> {
+            sendMessageToArena(((EditText)findViewById(R.id.tb_message)).getText().toString());
+        });
+
         mHandler = new Handler(Looper.getMainLooper()){
             @Override
             public void handleMessage(Message msg){
@@ -92,6 +116,9 @@ public class MainActivity extends AppCompatActivity {
                     String readMessage = null;
                     readMessage = new String((byte[]) msg.obj, StandardCharsets.UTF_8);
                     mReadBuffer.setText(readMessage);
+                    Log.e("MainActivity", "message: " + readMessage);
+
+                    sendMessageToArena(readMessage);
                 }
 
                 if(msg.what == CONNECTING_STATUS){
@@ -149,13 +176,15 @@ public class MainActivity extends AppCompatActivity {
             case R.id.bluetooth_off:
                 bluetoothOff();
                 return true;
-            case R.id.disconnect:
-                listPairedDevices();
+            case R.id.direct_connect:
+                connectSavedDevice(null, null);
                 return true;
             case R.id.connect:
-                connectSavedDevice(null, null);
-                //discover();
+                discover();
                 return true;
+//            case R.id.disconnect:
+//                listPairedDevices();
+//                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -174,6 +203,17 @@ public class MainActivity extends AppCompatActivity {
             }
             else
                 mBluetoothStatus.setText(getString(R.string.sDisabled));
+        }
+    }
+
+    private void sendMessageToArena(String message) {
+        // parse message JSON string and pass the JSON object to ArenaView
+        try {
+            JSONObject msgObj = new JSONObject(message);
+            ArenaView arenaView = (ArenaView) findViewById(R.id.arena_view);
+            if (arenaView != null) arenaView.onMessage(msgObj, MainActivity.this);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
         }
     }
 

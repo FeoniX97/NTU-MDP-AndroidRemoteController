@@ -8,6 +8,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+//  {"grid" : "000000000000000000000000000000000000000000000000000000020007"} // HEX
+//  {"robotPosition" : [6, 14, 270]} // x, y, dir
+//
+//  N: 0
+//  W: 270
+//  S: 180
+//  E: 90
+
 public class ConnectedThread extends Thread {
     private final BluetoothSocket mmSocket;
     private final InputStream mmInStream;
