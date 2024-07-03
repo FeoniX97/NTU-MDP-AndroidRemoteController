@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -19,6 +20,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.text.InputType;
 import android.util.Log;
+import android.view.DragEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -28,6 +30,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -109,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
             sendMessageToArena(((EditText)findViewById(R.id.tb_message)).getText().toString());
         });
 
-        mHandler = new Handler(Looper.getMainLooper()){
+        mHandler = new Handler(Looper.getMainLooper()) {
             @Override
             public void handleMessage(Message msg){
                 if(msg.what == MESSAGE_READ){
@@ -135,8 +138,7 @@ public class MainActivity extends AppCompatActivity {
             // Device does not support Bluetooth
             mBluetoothStatus.setText(getString(R.string.sBTstaNF));
             Toast.makeText(getApplicationContext(),getString(R.string.sBTdevNF),Toast.LENGTH_SHORT).show();
-        }
-        else {
+        } else {
             mForward.setOnClickListener(view -> {
                 if(mConnectedThread != null) //First check to make sure thread created
                     mConnectedThread.write("f");
@@ -157,6 +159,8 @@ public class MainActivity extends AppCompatActivity {
                     mConnectedThread.write("tr");
             });
         }
+
+        setupDragListener();
     }
 
     @Override
@@ -401,5 +405,52 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG, "Could not create Insecure RFComm Connection",e);
         }
         return  device.createRfcommSocketToServiceRecord(BT_MODULE_UUID);
+    }
+
+    private void setupDragListener() {
+        // Set the drag event listener for the Tile.
+        findViewById(R.id.main_layout).setOnDragListener( (v, e) -> {
+
+            // Handle each of the expected events.
+            switch(e.getAction()) {
+
+                case DragEvent.ACTION_DRAG_STARTED:
+
+                    // always return true to accept drop
+                    return true;
+
+                case DragEvent.ACTION_DRAG_ENTERED:
+
+                    Log.e("MainActivity", "Drag enter MainActivity");
+
+                    // Return true. The value is ignored.
+                    return true;
+
+                case DragEvent.ACTION_DROP:
+
+                    Log.e("MainActivity", "Drag dropped into MainActivity");
+
+                    // Get the item containing the dragged data.
+                    ClipData.Item item = e.getClipData().getItemAt(0);
+
+                    // Get the obstacle id from the item.
+                    CharSequence obstacleIdStr = item.getText();
+                    int obstacleId = Integer.parseInt(obstacleIdStr + "");
+
+                    // inform arena to remove obstacle
+                    ((ArenaView)findViewById(R.id.arena_view)).removeObstacle(obstacleId);
+
+                    // Return true. DragEvent.getResult() returns true.
+                    return true;
+
+                // An unknown action type is received.
+                default:
+                    Log.e("MainActivity","Unknown action type received by View.OnDragListener.");
+                    break;
+            }
+
+            return false;
+
+        });
     }
 }

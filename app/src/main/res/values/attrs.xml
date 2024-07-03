@@ -3,4 +3,9 @@
     <declare-styleable name="ArenaView">
         <attr name="showCoord" format="boolean" />
     </declare-styleable>
+
+    <declare-styleable name="ObstacleView">
+        <attr name="size" format="integer" />
+        <attr name="isLegend" format="boolean" />
+    </declare-styleable>
 </resources>

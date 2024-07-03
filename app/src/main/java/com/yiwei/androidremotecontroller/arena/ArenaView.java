@@ -38,11 +38,10 @@ public class ArenaView extends RelativeLayout {
     private final Point[] mCoordsY = new Point[ROWS];
     private final Point[] mCoordsX = new Point[COLS];
 
-    // tiles, robot and obstacles
+    // tiles and robot, obstacle is stored in individual tile object
     private final ArenaTileView[][] mTiles = new ArenaTileView[ROWS][COLS];
-    private final ObstacleView[][] mObstacles = new ObstacleView[ROWS][COLS];
     private RobotView mRobot;
-    private int obstacleCount = 0;
+    private int obstacleSpawned = 0;
 
     public ArenaView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -70,10 +69,12 @@ public class ArenaView extends RelativeLayout {
                 mRects[m][n].set(left, top, right, bottom);
 
                 // add tile view to rect
-                RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(TILE_SIZE - MARGIN, TILE_SIZE - MARGIN);
+                // stretch some offset height for most bottom rows
+                int offset = (m == ROWS - 1) ? 4 : 0;
+                RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(TILE_SIZE - MARGIN, TILE_SIZE - MARGIN + offset);
                 params.leftMargin = left;
                 params.topMargin = top;
-                ArenaTileView tileView = new ArenaTileView(getContext(), left, top, n, m, TILE_SIZE);
+                ArenaTileView tileView = new ArenaTileView(getContext(), left, top, n, m, TILE_SIZE, this);
                 addView(tileView, params);
 
                 // save tile to array
@@ -183,30 +184,82 @@ public class ArenaView extends RelativeLayout {
 
             Log.e("MainActivity", "obstacle: " + x + ", " + y + ", " + flag);
 
-            if (flag == 1 && mObstacles[y][x] == null) {
-                Log.e("MainActivity", "adding obstacle ...");
-
+            ArenaTileView tileView = mTiles[y][x];
+            if (flag == 1 && tileView != null && tileView.getObstacle() == null) {
                 // when flag == 1, spawn obstacle if not already exists
-                ArenaTileView tileView = mTiles[y][x];
-                if (tileView != null) {
-                    RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(TILE_SIZE - MARGIN, TILE_SIZE - MARGIN);
-                    params.leftMargin = tileView.getCoordX();
-                    params.topMargin = tileView.getCoordY();
-                    ObstacleView obstacleView = new ObstacleView(getContext(), obstacleCount, tileView.getCoordX(), tileView.getCoordY(), tileView.getIdxX(), tileView.getIdxY(), TILE_SIZE);
-                    addView(obstacleView, params);
-                    mObstacles[y][x] = obstacleView;
-                    obstacleCount++;
-                }
-            } else if (flag == 0 && mObstacles[y][x] != null) {
-                Log.e("MainActivity", "removing obstacle ...");
-
+                addObstacle(tileView);
+            } else if (flag == 0 && tileView.getObstacle() != null) {
                 // when flag == 0, remove obstacle if exists
-                removeView(mObstacles[y][x]);
-                mObstacles[y][x] = null;
-                obstacleCount--;
+                removeObstacle(tileView);
             }
         } catch (Exception e) {
             Log.e("MainActivity", e.getMessage());
         }
+    }
+
+    protected void addObstacle(ArenaTileView tileView) {
+        if (tileView == null || tileView.getObstacle() != null) {
+            return;
+        }
+
+        Log.e("MainActivity", "adding obstacle ...");
+
+        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(TILE_SIZE - MARGIN, TILE_SIZE - MARGIN);
+        params.leftMargin = tileView.getCoordX();
+        params.topMargin = tileView.getCoordY();
+        ObstacleView obstacleView = new ObstacleView(getContext(), obstacleSpawned, tileView.getCoordX(), tileView.getCoordY(), tileView.getIdxX(), tileView.getIdxY(), TILE_SIZE);
+        addView(obstacleView, params);
+        tileView.setObstacle(obstacleView);
+        obstacleSpawned++;
+    }
+
+    protected void removeObstacle(ArenaTileView tileView) {
+        if (tileView == null || tileView.getObstacle() == null) {
+            return;
+        }
+
+        Log.e("MainActivity", "removing obstacle ...");
+
+        removeView(tileView.getObstacle());
+        tileView.setObstacle(null);
+    }
+
+    public void removeObstacle(int obstacleId) {
+        // find the Tile with obstacle matches the target ID
+        removeObstacle(getTileFromObstacleId(obstacleId));
+    }
+
+    protected void moveObstacle(ArenaTileView fromTile, ArenaTileView toTile) {
+        if (fromTile == null || toTile == null) {
+            return;
+        }
+
+        if (fromTile.getObstacle() == null || toTile.getObstacle() != null) {
+            return;
+        }
+
+        ObstacleView obstacleView = fromTile.getObstacle();
+        RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) obstacleView.getLayoutParams();
+
+        layoutParams.leftMargin = toTile.getCoordX();
+        layoutParams.topMargin = toTile.getCoordY();
+
+        obstacleView.setLayoutParams(layoutParams);
+
+        toTile.setObstacle(obstacleView);
+        fromTile.setObstacle(null);
+    }
+
+    protected ArenaTileView getTileFromObstacleId(int obstacleId) {
+        for (int m = 0; m < ROWS; m++) {
+            for (int n = 0; n < COLS; n++) {
+                ArenaTileView tileView = this.mTiles[m][n];
+                if (tileView != null && tileView.getObstacle() != null && tileView.getObstacle().getId() == obstacleId) {
+                    return tileView;
+                }
+            }
+        }
+
+        return null;
     }
 }

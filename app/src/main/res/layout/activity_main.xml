@@ -2,6 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:custom="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main_layout"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:gravity="bottom|center"
@@ -15,7 +16,8 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="15dp"
+        android:layout_marginBottom="10dp"
+        android:gravity="center"
         android:orientation="horizontal">
 
         <TextView
@@ -44,20 +46,31 @@
             android:id="@+id/tb_direction"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginEnd="10dp"
+            android:layout_marginRight="10dp"
             android:background="@drawable/edit_text_border"
             android:ems="10"
             android:gravity="center"
             android:hint="Direction"
             android:inputType="text" />
 
+        <com.yiwei.androidremotecontroller.arena.ObstacleView
+            android:layout_width="45dp"
+            android:layout_height="45dp"
+            android:layout_marginStart="5dp"
+            android:layout_marginLeft="5dp"
+            android:layout_marginTop="4dp"
+            custom:isLegend="true"
+            custom:size="50" />
+
     </LinearLayout>
 
     <com.yiwei.androidremotecontroller.arena.ArenaView
         android:id="@+id/arena_view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:paddingBottom="20dp"
+        android:paddingBottom="25dp"
         custom:showCoord="true" />
 
     <LinearLayout
