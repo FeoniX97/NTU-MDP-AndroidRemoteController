@@ -13,14 +13,15 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 
+import com.yiwei.androidremotecontroller.MainActivity;
 import com.yiwei.androidremotecontroller.R;
 
 public class ObstacleView extends View {
 
-    private static final char IMAGE_DIR_TOP = 't';
-    private static final char IMAGE_DIR_LEFT = 'l';
-    private static final char IMAGE_DIR_RIGHT = 'r';
-    private static final char IMAGE_DIR_BOTTOM = 'b';
+    private static final char IMAGE_DIR_NORTH = 'n';
+    private static final char IMAGE_DIR_WEST = 'w';
+    private static final char IMAGE_DIR_EAST = 'e';
+    private static final char IMAGE_DIR_SOUTH = 's';
     private static final char IMAGE_DIR_NONE = 'x';
 
     private final int id;
@@ -43,6 +44,8 @@ public class ObstacleView extends View {
     private final Rect mRectBottomBorder;
 
     private char mImageDir = IMAGE_DIR_NONE;
+
+    public MainActivity mainActivity;
 
     // constructed from xml, for legend
     public ObstacleView(Context context, @Nullable AttributeSet attrs) {
@@ -137,16 +140,16 @@ public class ObstacleView extends View {
             // draw image direction border if exists
             if (getImageDir() != IMAGE_DIR_NONE) {
                 switch (getImageDir()) {
-                    case IMAGE_DIR_TOP:
+                    case IMAGE_DIR_NORTH:
                         canvas.drawRect(mRectTopBorder, mRedPaintBrushFill);
                         break;
-                    case IMAGE_DIR_LEFT:
+                    case IMAGE_DIR_WEST:
                         canvas.drawRect(mRectLeftBorder, mRedPaintBrushFill);
                         break;
-                    case IMAGE_DIR_RIGHT:
+                    case IMAGE_DIR_EAST:
                         canvas.drawRect(mRectRightBorder, mRedPaintBrushFill);
                         break;
-                    case IMAGE_DIR_BOTTOM:
+                    case IMAGE_DIR_SOUTH:
                         canvas.drawRect(mRectBottomBorder, mRedPaintBrushFill);
                         break;
                 }
@@ -168,16 +171,16 @@ public class ObstacleView extends View {
                 try {
                     switch (menuItem.getItemId()) {
                         case R.id.top:
-                            setImageDir(IMAGE_DIR_TOP);
+                            setImageDir(IMAGE_DIR_NORTH);
                             break;
                         case R.id.left:
-                            setImageDir(IMAGE_DIR_LEFT);
+                            setImageDir(IMAGE_DIR_WEST);
                             break;
                         case R.id.right:
-                            setImageDir(IMAGE_DIR_RIGHT);
+                            setImageDir(IMAGE_DIR_EAST);
                             break;
                         case R.id.bottom:
-                            setImageDir(IMAGE_DIR_BOTTOM);
+                            setImageDir(IMAGE_DIR_SOUTH);
                             break;
                         case R.id.clear:
                             setImageDir(IMAGE_DIR_NONE);
@@ -251,7 +254,7 @@ public class ObstacleView extends View {
     }
 
     public void setImageDir(char mImageDir) throws Exception {
-        if (mImageDir != IMAGE_DIR_NONE && mImageDir != IMAGE_DIR_TOP && mImageDir != IMAGE_DIR_LEFT && mImageDir != IMAGE_DIR_RIGHT && mImageDir != IMAGE_DIR_BOTTOM) {
+        if (mImageDir != IMAGE_DIR_NONE && mImageDir != IMAGE_DIR_NORTH && mImageDir != IMAGE_DIR_WEST && mImageDir != IMAGE_DIR_EAST && mImageDir != IMAGE_DIR_SOUTH) {
             throw new Exception("obstacle image direction invalid type! - " + this.getId());
         }
 
@@ -259,5 +262,9 @@ public class ObstacleView extends View {
 
         // redraw the obstacle
         invalidate();
+
+        if (this.mainActivity != null) {
+            this.mainActivity.sendMessageToAMD("{ \"faceObstacle:\" [" + this.getIdxX() + ", " + this.getIdxY() + ", " + mImageDir + ", " + this.getId() + "] }");
+        }
     }
 }

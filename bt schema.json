@@ -1,0 +1,61 @@
+{
+  // "bt": robot -> app, send when initial BT connected
+  // for future direct connection
+  "bt": {
+
+    // optional
+    "name": "str",
+
+    // BT hardware address
+    "addr": "str"
+  },
+
+  // "status": robot -> app, the status of the robot, custom message, for c4
+  "status": "str",
+
+  // "robot": robot -> app, send whenever robot location/direction updated
+  "robot": {
+
+    // the current x coordinate of the robot on map
+    "x": 0,
+
+    // the current y coordinate of the robot on map
+    "y": 0,
+
+    // the direction of robot is facing: "n"orth, "s"outh, "e"ast, "w"est
+    "dir": "n"
+  },
+
+  // "move": app -> robot, instruct the robot to move: "f"orward, "b"ackward, "l"eft, "r"ight
+  // send when the app movement buttons are pressed
+  "move": "f",
+
+  // "obstacle": app <-> robot
+  // app send to robot whenever an obstacle is placed into the map or updated
+  // robot send to app whenever an obstacle is first detected or updated
+  "obstacle": {
+    
+    // id of the obstacle(start with 0), increment whenever a new obstacle is placed into the map
+    "id": 0,
+
+    // the current x coordinate of the obstacle on map
+    "x": 0,
+
+    // the current y coordinate of the obstacle on map
+    "y": 0,
+
+    // whether the obstacle exists on the map
+    // treats the obstacle as removed if this field is 'false' or 'undefined'
+    "exists": true,
+
+    // image attaching to the obstacle
+    "image": {
+
+      // id of the image(start with 0), pre-defined for each unique image
+      "id": 0,
+
+      // the direction of image is facing on the obstacle: "n"orth, "s"outh, "e"ast, "w"est
+      "dir": "n"
+    }
+  }
+}

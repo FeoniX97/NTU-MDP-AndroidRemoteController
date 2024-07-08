@@ -6,6 +6,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.util.Log;
 import android.view.DragEvent;
@@ -108,10 +109,16 @@ public class ArenaTileView extends View {
 
                     if (obstacleId > -1) {
                         // move the obstacle in arena
-                        this.arenaView.moveObstacle(this.arenaView.getTileFromObstacleId(obstacleId), this);
+                        ArenaTileView fromTile = this.arenaView.getTileFromObstacleId(obstacleId);
+                        Point from = new Point(fromTile.getIdxX(), fromTile.getIdxY());
+                        Point to = new Point(this.getIdxX(), this.getIdxY());
+                        this.arenaView.moveObstacle(fromTile, this);
+                        this.arenaView.mainActivity.sendMessageToAMD("{ \"moveObstacle:\" [" + from.x + ", " + from.y + ", " + to.x + ", " + to.y + ", " + obstacleId + "] }");
                     } else {
                         // inform arena to create new obstacle from legend
-                        this.arenaView.addObstacle(this);
+                        ObstacleView newObstacle = this.arenaView.addObstacle(this);
+                        newObstacle.mainActivity = this.arenaView.mainActivity;
+                        this.arenaView.mainActivity.sendMessageToAMD("{ \"addObstacle:\" [" + newObstacle.getIdxX() + ", " + newObstacle.getIdxY() + ", " + newObstacle.getId() + "] }");
                     }
 
                     // remove highlight

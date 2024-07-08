@@ -15,7 +15,25 @@ namespace ScriptNs
             string stringToSend = "";
             if (posTgridF)
             {
-                stringToSend = @"{""robotPosition"" : [" + robotPosition[0] + ", " + robotPosition[1] + ", " + robotPosition[2] + "]}";
+                // stringToSend = @"{""robotPosition"" : [" + robotPosition[0] + ", " + robotPosition[1] + ", " + robotPosition[2] + "]}";
+
+                char dir = 'x';
+                switch (robotPosition[2]) {
+                    case 0:
+                        dir = 'N';
+                        break;
+                    case 270:
+                        dir = 'W';
+                        break;
+                    case 180:
+                        dir = 'S';
+                        break;
+                    case 90:
+                        dir = 'E';
+                        break;
+                }
+
+                stringToSend = "robot:" + robotPosition[0] + "," + robotPosition[1] + "," + dir;
             }
             else
             {

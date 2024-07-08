@@ -59,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
 
     // GUI Components
     private TextView mBluetoothStatus;
-    private TextView mReadBuffer;
+    public TextView mReadBuffer;
     private TextView mDevicesDialogTitle;
     private ListView mDevicesListView;
     private Dialog mDevicesDialog;
@@ -71,6 +71,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText mDirection;
     private EditText mMessage;
     private Button mSendMsg;
+    private ArenaView mArenaView;
 
     private BluetoothAdapter mBTAdapter;
     private Set<BluetoothDevice> mPairedDevices;
@@ -95,6 +96,10 @@ public class MainActivity extends AppCompatActivity {
         mDirection = (EditText) findViewById(R.id.tb_direction);
         mMessage = (EditText) findViewById(R.id.tb_message);
         mSendMsg = (Button) findViewById(R.id.btn_send_msg);
+        mArenaView = (ArenaView) findViewById(R.id.arena_view);
+
+        if (mArenaView != null)
+            mArenaView.mainActivity = this;
 
         mCoord.setFocusable(false);
         mDirection.setFocusable(false);
@@ -109,7 +114,10 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
 
         mSendMsg.setOnClickListener(view -> {
-            sendMessageToArena(((EditText)findViewById(R.id.tb_message)).getText().toString());
+            // sendMessageToArena(((EditText)findViewById(R.id.tb_message)).getText().toString());
+
+            // send message to AMD
+            mConnectedThread.write(((EditText)findViewById(R.id.tb_message)).getText().toString());
         });
 
         mHandler = new Handler(Looper.getMainLooper()) {
@@ -126,9 +134,15 @@ public class MainActivity extends AppCompatActivity {
 
                 if(msg.what == CONNECTING_STATUS){
                     char[] sConnected;
-                    if(msg.arg1 == 1)
+                    if(msg.arg1 == 1) {
                         mBluetoothStatus.setText(getString(R.string.BTConnected) + " " + msg.obj);
-                    else
+
+                        // set status
+                        mReadBuffer.setText("BT connected");
+
+                        // send connected message to AMD
+                        sendMessageToAMD("BT connected");
+                    } else
                         mBluetoothStatus.setText(getString(R.string.BTconnFail));
                 }
             }
@@ -141,22 +155,22 @@ public class MainActivity extends AppCompatActivity {
         } else {
             mForward.setOnClickListener(view -> {
                 if(mConnectedThread != null) //First check to make sure thread created
-                    mConnectedThread.write("f");
+                    sendMessageToAMD("f");
             });
 
             mReverse.setOnClickListener(view -> {
                 if(mConnectedThread != null) //First check to make sure thread created
-                    mConnectedThread.write("r");
+                    sendMessageToAMD("r");
             });
 
             mTurnLeft.setOnClickListener(view -> {
                 if(mConnectedThread != null) //First check to make sure thread created
-                    mConnectedThread.write("tl");
+                    sendMessageToAMD("tl");
             });
 
             mTurnRight.setOnClickListener(view -> {
                 if(mConnectedThread != null) //First check to make sure thread created
-                    mConnectedThread.write("tr");
+                    sendMessageToAMD("tr");
             });
         }
 
@@ -213,12 +227,15 @@ public class MainActivity extends AppCompatActivity {
     private void sendMessageToArena(String message) {
         // parse message JSON string and pass the JSON object to ArenaView
         try {
-            JSONObject msgObj = new JSONObject(message);
-            ArenaView arenaView = (ArenaView) findViewById(R.id.arena_view);
-            if (arenaView != null) arenaView.onMessage(msgObj, MainActivity.this);
+            mArenaView.onMessage(message, MainActivity.this);
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void sendMessageToAMD(String message) {
+        Log.e(TAG, "sending message to AMD: " + message);
+        mConnectedThread.write(message);
     }
 
     private void bluetoothOn(){
@@ -438,7 +455,7 @@ public class MainActivity extends AppCompatActivity {
                     int obstacleId = Integer.parseInt(obstacleIdStr + "");
 
                     // inform arena to remove obstacle
-                    ((ArenaView)findViewById(R.id.arena_view)).removeObstacle(obstacleId);
+                    mArenaView.removeObstacle(obstacleId);
 
                     // Return true. DragEvent.getResult() returns true.
                     return true;

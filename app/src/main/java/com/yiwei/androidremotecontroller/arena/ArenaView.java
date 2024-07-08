@@ -43,6 +43,8 @@ public class ArenaView extends RelativeLayout {
     private RobotView mRobot;
     private int obstacleSpawned = 0;
 
+    public MainActivity mainActivity;
+
     public ArenaView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
 
@@ -117,64 +119,34 @@ public class ArenaView extends RelativeLayout {
     }
 
     /** On receive message from robot, passed from MainActivity */
-    public void onMessage(JSONObject msgObj, MainActivity mainActivity) {
+    public void onMessage(String message, MainActivity mainActivity) throws JSONException {
+        // handle special message for c10, to be deleted in future
+        if (message.contains("robot")) {
+            int x = Integer.valueOf(message.split(",")[0].split(":")[1]);
+            int y = Integer.valueOf(message.split(",")[1]);
+            char dir = message.split(",")[2].charAt(0);
+
+            updateRobotPosition(x, y, getIntFromDir(dir));
+
+            return;
+        }
+        // end of handling
+
+        JSONObject msgObj = new JSONObject(message);
+
+        // robotPosition
         JSONArray robotPosition = null;
         try {
             robotPosition = msgObj.getJSONArray("robotPosition");
             int x = robotPosition.getInt(0);
             int y = robotPosition.getInt(1);
             int dirInt = robotPosition.getInt(2);
-            String dir = "";
-
-            switch (dirInt) {
-                case 0:
-                    dir = "N";
-                    break;
-                case 270:
-                    dir = "W";
-                    break;
-                case 180:
-                    dir = "S";
-                    break;
-                case 90:
-                    dir = "E";
-                    break;
-            }
 
             // spawn robot or change robot location if coordinates changes
-            if (mRobot == null || mRobot.getIdxX() != x || mRobot.getIdxY() != y) {
-                Log.e("MainActivity", "new robot coord: " + x + ", " + y);
-
-                // display the new robot coordinates in textbox
-                ((EditText) mainActivity.findViewById(R.id.tb_coord)).setText(x + ", " + y);
-
-                // spawn and display the robot on arena, delete the old one if already exists
-                if (mRobot != null) {
-                    removeView(mRobot);
-                    mRobot = null;
-                }
-
-                ArenaTileView tileView = mTiles[y][x];
-                if (tileView != null) {
-                    RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(TILE_SIZE - MARGIN, TILE_SIZE - MARGIN);
-                    params.leftMargin = tileView.getCoordX();
-                    params.topMargin = tileView.getCoordY();
-                    RobotView robotView = new RobotView(getContext(), tileView.getCoordX(), tileView.getCoordY(), tileView.getIdxX(), tileView.getIdxY(), dirInt);
-                    addView(robotView, params);
-                    mRobot = robotView;
-                }
-            }
-
-            // update robot direction if changes
-            if (!mRobot.getDir().equals(dir)) {
-                mRobot.setRotation(dirInt);
-                mRobot.setDirInt(dirInt);
-                Log.e("MainActivity", "new robot direction: " + dir);
-            }
-
-            ((EditText) mainActivity.findViewById(R.id.tb_direction)).setText(dir);
+            updateRobotPosition(x, y, dirInt);
         } catch (JSONException ignored) {}
 
+        // obstacle
         JSONArray obstacle = null;
         try {
             obstacle = msgObj.getJSONArray("obstacle");
@@ -187,7 +159,8 @@ public class ArenaView extends RelativeLayout {
             ArenaTileView tileView = mTiles[y][x];
             if (flag == 1 && tileView != null && tileView.getObstacle() == null) {
                 // when flag == 1, spawn obstacle if not already exists
-                addObstacle(tileView);
+                ObstacleView newObstacle = addObstacle(tileView);
+                newObstacle.mainActivity = this.mainActivity;
             } else if (flag == 0 && tileView.getObstacle() != null) {
                 // when flag == 0, remove obstacle if exists
                 removeObstacle(tileView);
@@ -195,11 +168,101 @@ public class ArenaView extends RelativeLayout {
         } catch (Exception e) {
             Log.e("MainActivity", e.getMessage());
         }
+
+        // status
+        String status;
+        try {
+            status = msgObj.getString("status");
+            mainActivity.mReadBuffer.setText(status + " (" + msgObj + ")");
+        } catch (Exception e) {
+            Log.e("MainActivity", e.getMessage());
+        }
     }
 
-    protected void addObstacle(ArenaTileView tileView) {
+    private void updateRobotPosition(int x, int y, int dirInt) {
+        if (mRobot == null || mRobot.getIdxX() != x || mRobot.getIdxY() != y) {
+            Log.e("MainActivity", "new robot coord: " + x + ", " + y);
+
+            // display the new robot coordinates in textbox
+            ((EditText) mainActivity.findViewById(R.id.tb_coord)).setText(x + ", " + y);
+
+            // spawn and display the robot on arena, delete the old one if already exists
+            if (mRobot != null) {
+                removeView(mRobot);
+                mRobot = null;
+            }
+
+            ArenaTileView tileView = mTiles[y][x];
+            if (tileView != null) {
+                RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(TILE_SIZE - MARGIN, TILE_SIZE - MARGIN);
+                params.leftMargin = tileView.getCoordX();
+                params.topMargin = tileView.getCoordY();
+                RobotView robotView = new RobotView(getContext(), tileView.getCoordX(), tileView.getCoordY(), tileView.getIdxX(), tileView.getIdxY(), dirInt);
+                addView(robotView, params);
+                mRobot = robotView;
+            }
+        }
+
+        EditText tbDirection = (EditText) mainActivity.findViewById(R.id.tb_direction);
+
+        // update robot direction if changes
+        char dir = getDirFromInt(dirInt);
+        if (!mRobot.getDir().equals(dir)) {
+            mRobot.setRotation(dirInt);
+            mRobot.setDirInt(dirInt);
+            Log.e("MainActivity", "new robot direction: " + dir);
+
+            if (tbDirection.getText().toString() != null && !tbDirection.getText().toString().equals(dir + "")) {
+                tbDirection.setText(dir + "");
+            }
+        }
+    }
+
+    private char getDirFromInt(int dirInt) {
+        char dir = 'X';
+
+        switch (dirInt) {
+            case 0:
+                dir = 'N';
+                break;
+            case 270:
+                dir = 'W';
+                break;
+            case 180:
+                dir = 'S';
+                break;
+            case 90:
+                dir = 'E';
+                break;
+        }
+
+        return dir;
+    }
+
+    private int getIntFromDir(char dir) {
+        int dirInt = -1;
+
+        switch (dir) {
+            case 'N':
+                dirInt = 0;
+                break;
+            case 'W':
+                dirInt = 270;
+                break;
+            case 'S':
+                dirInt = 180;
+                break;
+            case 'E':
+                dirInt = 90;
+                break;
+        }
+
+        return dirInt;
+    }
+
+    protected ObstacleView addObstacle(ArenaTileView tileView) {
         if (tileView == null || tileView.getObstacle() != null) {
-            return;
+            return null;
         }
 
         Log.e("MainActivity", "adding obstacle ...");
@@ -211,6 +274,8 @@ public class ArenaView extends RelativeLayout {
         addView(obstacleView, params);
         tileView.setObstacle(obstacleView);
         obstacleSpawned++;
+
+        return obstacleView;
     }
 
     protected void removeObstacle(ArenaTileView tileView) {
@@ -220,7 +285,12 @@ public class ArenaView extends RelativeLayout {
 
         Log.e("MainActivity", "removing obstacle ...");
 
-        removeView(tileView.getObstacle());
+        ObstacleView targetObstacle = tileView.getObstacle();
+
+        this.mainActivity.sendMessageToAMD("{ \"removeObstacle:\" [" + targetObstacle.getIdxX() + ", " + targetObstacle.getIdxY() + ", " + targetObstacle.getId() + "] }");
+        // this.mainActivity.sendMessageToAMD("{ \"removeObstacle:\" [" + targetObstacle.getId() + "] }");
+
+        removeView(targetObstacle);
         tileView.setObstacle(null);
     }
 
