@@ -10,6 +10,7 @@ import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -175,7 +176,30 @@ public class MainActivity extends AppCompatActivity {
         }
 
         setupDragListener();
+
+//        IntentFilter filter = new IntentFilter();
+//        filter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
+//        filter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED);
+//        filter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
+//        this.registerReceiver(BTReceiver, filter);
     }
+
+    //The BroadcastReceiver that listens for bluetooth broadcasts
+//    private final BroadcastReceiver BTReceiver = new BroadcastReceiver() {
+//        @Override
+//        public void onReceive(Context context, Intent intent) {
+//            String action = intent.getAction();
+//
+//            if (BluetoothDevice.ACTION_ACL_CONNECTED.equals(action)) {
+//                //Do something if connected
+//                Toast.makeText(getApplicationContext(), "BT Connected", Toast.LENGTH_SHORT).show();
+//            } else if (BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(action)) {
+//                //Do something if disconnected
+//                Toast.makeText(getApplicationContext(), "BT Disconnected", Toast.LENGTH_SHORT).show();
+//            }
+//            //else if...
+//        }
+//    };
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -195,7 +219,11 @@ public class MainActivity extends AppCompatActivity {
                 bluetoothOff();
                 return true;
             case R.id.direct_connect:
-                connectSavedDevice(null, null);
+                // direct connect to device using shared pref
+                String deviceName = getStoredDeviceName();
+                String deviceAddr = getStoredDeviceAddr();
+                Log.e(TAG, "trying direct connect, device name: " + deviceName + ", device addr: " + deviceAddr);
+                connectSavedDevice(deviceName, deviceAddr);
                 return true;
             case R.id.connect:
                 discover();
@@ -226,11 +254,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void sendMessageToArena(String message) {
         // parse message JSON string and pass the JSON object to ArenaView
-        try {
-            mArenaView.onMessage(message, MainActivity.this);
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
-        }
+        mArenaView.onMessage(message, MainActivity.this);
+    }
+
+    public void setDirText(String dir) {
+        this.mDirection.setText(dir);
     }
 
     public void sendMessageToAMD(String message) {
@@ -352,12 +380,16 @@ public class MainActivity extends AppCompatActivity {
             Log.e("MainActivity", "name: " + name);
             Log.e("MainActivity", "address: " + address);
 
+            // store the name and addr into sharedpref
+            storeConnectedDeviceInfo(name, address);
+
             connectSavedDevice(name, address);
         }
     };
 
     private void connectSavedDevice(String name, String address) {
         if (name == null || address == null) {
+            Log.e(TAG, "device name or address is null, direct connect using default value");
             name = "DESKTOP-0RLC4T3";
             address = "48:89:E7:C8:BB:E8";
         }
@@ -469,5 +501,37 @@ public class MainActivity extends AppCompatActivity {
             return false;
 
         });
+    }
+
+    private void storeConnectedDeviceInfo(String name, String addr) {
+        // Storing data into SharedPreferences
+        SharedPreferences sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE);
+
+        // Creating an Editor object to edit(write to the file)
+        SharedPreferences.Editor myEdit = sharedPreferences.edit();
+
+        // Storing the key and its value as the data
+        myEdit.putString("device_name", name);
+        myEdit.putString("device_addr", addr);
+
+        // Once the changes have been made, we need to commit to apply those changes made,
+        // otherwise, it will throw an error
+        myEdit.apply();
+    }
+
+    private String getStoredDeviceName() {
+        // Retrieving the value using its keys the file name must be same in both saving and retrieving the data
+        SharedPreferences sh = getSharedPreferences("MySharedPref", MODE_PRIVATE);
+
+        // We can then use the data
+        return sh.getString("device_name", "");
+    }
+
+    private String getStoredDeviceAddr() {
+        // Retrieving the value using its keys the file name must be same in both saving and retrieving the data
+        SharedPreferences sh = getSharedPreferences("MySharedPref", MODE_PRIVATE);
+
+        // We can then use the data
+        return sh.getString("device_addr", "");
     }
 }

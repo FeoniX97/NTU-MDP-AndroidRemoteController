@@ -33,7 +33,7 @@ namespace ScriptNs
                         break;
                 }
 
-                stringToSend = "robot:" + robotPosition[0] + "," + robotPosition[1] + "," + dir;
+                stringToSend = "robot," + robotPosition[0] + "," + robotPosition[1] + "," + dir;
             }
             else
             {

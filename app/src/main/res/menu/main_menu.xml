@@ -7,11 +7,11 @@
         android:id="@+id/bluetooth_off"
         android:title="Bluetooth Off" />
     <item
-        android:id="@+id/direct_connect"
-        android:title="Direct Connect PC" />
-    <item
         android:id="@+id/connect"
         android:title="Connect" />
+    <item
+        android:id="@+id/direct_connect"
+        android:title="Reconnect" />
 <!--    <item-->
 <!--        android:id="@+id/disconnect"-->
 <!--        android:title="Disconnect" />-->

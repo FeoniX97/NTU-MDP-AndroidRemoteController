@@ -119,12 +119,12 @@ public class ArenaView extends RelativeLayout {
     }
 
     /** On receive message from robot, passed from MainActivity */
-    public void onMessage(String message, MainActivity mainActivity) throws JSONException {
+    public void onMessage(String message, MainActivity mainActivity) {
         // handle special message for c10, to be deleted in future
-        if (message.contains("robot")) {
-            int x = Integer.valueOf(message.split(",")[0].split(":")[1]);
-            int y = Integer.valueOf(message.split(",")[1]);
-            char dir = message.split(",")[2].charAt(0);
+        if (message.toLowerCase().contains("robot")) {
+            int x = Integer.valueOf(message.split(",")[1]);
+            int y = Integer.valueOf(message.split(",")[2]);
+            char dir = message.split(",")[3].charAt(0);
 
             updateRobotPosition(x, y, getIntFromDir(dir));
 
@@ -132,7 +132,47 @@ public class ArenaView extends RelativeLayout {
         }
         // end of handling
 
-        JSONObject msgObj = new JSONObject(message);
+        // handle special message for c9, to be deleted in future
+        if (message.toLowerCase().contains("target")) {
+            int obstacleId = Integer.valueOf(message.split(",")[1]);
+            int targetId = Integer.valueOf(message.split(",")[2]);
+            char dir = message.split(",")[3].charAt(0);
+
+            Log.e("MainActivity", "detected image, obstacleId: " + obstacleId + ", targetId: " + targetId);
+
+            ArenaTileView tile = getTileFromObstacleId(obstacleId);
+
+            if (tile != null && tile.getObstacle() != null) {
+                tile.getObstacle().setImageTargetId(targetId);
+                tile.getObstacle().setImageDir(dir);
+            }
+
+            return;
+        }
+
+        // handle special message for c4
+        if (message.toLowerCase().contains("status")) {
+            JSONObject msgObj;
+            try {
+                msgObj = new JSONObject(message);
+                String status = msgObj.getString("status");
+                mainActivity.mReadBuffer.setText(status + " (" + msgObj + ")");
+            } catch (JSONException e) {
+                mainActivity.mReadBuffer.setText(message);
+            }
+
+            return;
+        }
+
+        JSONObject msgObj;
+        try {
+            msgObj = new JSONObject(message);
+        } catch (JSONException e) {
+            // display the raw message on status text
+            mainActivity.mReadBuffer.setText(message);
+
+            return;
+        }
 
         // robotPosition
         JSONArray robotPosition = null;
@@ -170,13 +210,13 @@ public class ArenaView extends RelativeLayout {
         }
 
         // status
-        String status;
-        try {
-            status = msgObj.getString("status");
-            mainActivity.mReadBuffer.setText(status + " (" + msgObj + ")");
-        } catch (Exception e) {
-            Log.e("MainActivity", e.getMessage());
-        }
+//        String status;
+//        try {
+//            status = msgObj.getString("status");
+//            mainActivity.mReadBuffer.setText(status + " (" + msgObj + ")");
+//        } catch (Exception e) {
+//            Log.e("MainActivity", e.getMessage());
+//        }
     }
 
     private void updateRobotPosition(int x, int y, int dirInt) {
@@ -213,7 +253,8 @@ public class ArenaView extends RelativeLayout {
             Log.e("MainActivity", "new robot direction: " + dir);
 
             if (tbDirection.getText().toString() != null && !tbDirection.getText().toString().equals(dir + "")) {
-                tbDirection.setText(dir + "");
+                //tbDirection.setText(dir + "");
+                this.mainActivity.setDirText(dir + "");
             }
         }
     }

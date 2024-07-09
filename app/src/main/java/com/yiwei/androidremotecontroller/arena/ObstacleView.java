@@ -7,6 +7,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.Typeface;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.PopupMenu;
 import android.util.AttributeSet;
@@ -36,14 +37,22 @@ public class ObstacleView extends View {
 
     private final Paint mBlackPaintBrushFill;
     private final Paint mWhitePaintBrushFill;
+    private final Paint mWhitePaintBrushFillBold;
     private final Paint mRedPaintBrushFill;
     private final Rect mRect;
     private final Rect mRectTopBorder;
     private final Rect mRectLeftBorder;
     private final Rect mRectRightBorder;
     private final Rect mRectBottomBorder;
+    private final Rect mRectTopBorderThick;
+    private final Rect mRectLeftBorderThick;
+    private final Rect mRectRightBorderThick;
+    private final Rect mRectBottomBorderThick;
 
     private char mImageDir = IMAGE_DIR_NONE;
+
+    /** the detected imageId, -1 if no image detected */
+    private int mImageTargetId = -1;
 
     public MainActivity mainActivity;
 
@@ -66,8 +75,10 @@ public class ObstacleView extends View {
 
         // legend obstacle does not have index and image direction border
         mWhitePaintBrushFill = null;
+        mWhitePaintBrushFillBold = null;
         mRedPaintBrushFill = null;
         mRectTopBorder = mRectLeftBorder = mRectRightBorder = mRectBottomBorder = null;
+        mRectTopBorderThick = mRectLeftBorderThick = mRectRightBorderThick = mRectBottomBorderThick = null;
 
         // for body
         mBlackPaintBrushFill = new Paint();
@@ -103,6 +114,12 @@ public class ObstacleView extends View {
         mWhitePaintBrushFill.setStyle(Paint.Style.FILL);
         mWhitePaintBrushFill.setTextSize(16f);
 
+        mWhitePaintBrushFillBold = new Paint();
+        mWhitePaintBrushFillBold.setColor(Color.WHITE);
+        mWhitePaintBrushFillBold.setStyle(Paint.Style.FILL);
+        mWhitePaintBrushFillBold.setTextSize(24f);
+        mWhitePaintBrushFillBold.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+
         // for image direction border
         mRedPaintBrushFill = new Paint();
         mRedPaintBrushFill.setColor(Color.RED);
@@ -123,6 +140,17 @@ public class ObstacleView extends View {
         mRectRightBorder.set(size - 8, 0, size, size);
         mRectBottomBorder.set(0, size - 8, size, size);
 
+        // create another set of thicker border rect
+        mRectTopBorderThick = new Rect();
+        mRectLeftBorderThick = new Rect();
+        mRectRightBorderThick = new Rect();
+        mRectBottomBorderThick = new Rect();
+
+        mRectTopBorderThick.set(0, 0, size, 6);
+        mRectLeftBorderThick.set(0, 0, 6, size);
+        mRectRightBorderThick.set(size - 11, 0, size, size);
+        mRectBottomBorderThick.set(0, size - 11, size, size);
+
         setupPopupMenu();
         setupDraggable();
     }
@@ -135,22 +163,28 @@ public class ObstacleView extends View {
 
         if (!isLegend()) {
             // draw index
-            canvas.drawText(String.valueOf(this.id), (float) this.size / 2 - 7 - (this.id > 9 ? 5 : 0), (float) this.size / 2 + 2, this.mWhitePaintBrushFill);
+            if (this.getImageTargetId() < 0) {
+                // draw normal index, no image detected
+                canvas.drawText(String.valueOf(this.id), (float) this.size / 2 - 7 - (this.id > 9 ? 5 : 0), (float) this.size / 2 + 2, this.mWhitePaintBrushFill);
+            } else {
+                // draw bold targetId
+                canvas.drawText(String.valueOf(this.getImageTargetId()), (float) this.size / 2 - 9 - (this.getImageTargetId() > 9 ? 8 : 0), (float) this.size / 2 + 6, this.mWhitePaintBrushFillBold);
+            }
 
             // draw image direction border if exists
             if (getImageDir() != IMAGE_DIR_NONE) {
                 switch (getImageDir()) {
                     case IMAGE_DIR_NORTH:
-                        canvas.drawRect(mRectTopBorder, mRedPaintBrushFill);
+                        canvas.drawRect(this.getImageTargetId() < 0 ? mRectTopBorder : mRectTopBorderThick, mRedPaintBrushFill);
                         break;
                     case IMAGE_DIR_WEST:
-                        canvas.drawRect(mRectLeftBorder, mRedPaintBrushFill);
+                        canvas.drawRect(this.getImageTargetId() < 0 ? mRectLeftBorder : mRectLeftBorderThick, mRedPaintBrushFill);
                         break;
                     case IMAGE_DIR_EAST:
-                        canvas.drawRect(mRectRightBorder, mRedPaintBrushFill);
+                        canvas.drawRect(this.getImageTargetId() < 0 ? mRectRightBorder : mRectRightBorderThick, mRedPaintBrushFill);
                         break;
                     case IMAGE_DIR_SOUTH:
-                        canvas.drawRect(mRectBottomBorder, mRedPaintBrushFill);
+                        canvas.drawRect(this.getImageTargetId() < 0 ? mRectBottomBorder : mRectBottomBorderThick, mRedPaintBrushFill);
                         break;
                 }
             }
@@ -164,6 +198,9 @@ public class ObstacleView extends View {
 
             // Inflating popup menu from obstacle_menu.xml file
             popupMenu.getMenuInflater().inflate(R.menu.obstacle_menu, popupMenu.getMenu());
+
+            popupMenu.getMenu().getItem(0).setTitle("Obstacle Id: " + this.getId());
+            popupMenu.getMenu().getItem(1).setTitle("Target Id: " + this.getImageTargetId());
 
             popupMenu.setOnMenuItemClickListener(menuItem -> {
                 // Toast message on menu item clicked
@@ -183,7 +220,9 @@ public class ObstacleView extends View {
                             setImageDir(IMAGE_DIR_SOUTH);
                             break;
                         case R.id.clear:
+                            // clear the image with the targetId
                             setImageDir(IMAGE_DIR_NONE);
+                            setImageTargetId(-1);
                             break;
                     }
                 } catch (Exception e) {
@@ -253,9 +292,12 @@ public class ObstacleView extends View {
         return mImageDir;
     }
 
-    public void setImageDir(char mImageDir) throws Exception {
+    public void setImageDir(char mImageDir) {
+        mImageDir = Character.toLowerCase(mImageDir);
+
         if (mImageDir != IMAGE_DIR_NONE && mImageDir != IMAGE_DIR_NORTH && mImageDir != IMAGE_DIR_WEST && mImageDir != IMAGE_DIR_EAST && mImageDir != IMAGE_DIR_SOUTH) {
-            throw new Exception("obstacle image direction invalid type! - " + this.getId());
+            return;
+            //throw new Exception("obstacle image direction invalid type! - " + this.getId());
         }
 
         this.mImageDir = mImageDir;
@@ -266,5 +308,20 @@ public class ObstacleView extends View {
         if (this.mainActivity != null) {
             this.mainActivity.sendMessageToAMD("{ \"faceObstacle:\" [" + this.getIdxX() + ", " + this.getIdxY() + ", " + mImageDir + ", " + this.getId() + "] }");
         }
+    }
+
+    public int getImageTargetId() {
+        return mImageTargetId;
+    }
+
+    public void setImageTargetId(int mImageTargetId) {
+        if (mImageTargetId < -1) {
+            return;
+        }
+
+        this.mImageTargetId = mImageTargetId;
+
+        // redraw the obstacle
+        invalidate();
     }
 }
