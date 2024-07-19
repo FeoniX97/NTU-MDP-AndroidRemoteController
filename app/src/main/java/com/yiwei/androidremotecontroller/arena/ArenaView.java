@@ -20,14 +20,22 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ArenaView extends RelativeLayout {
 
     // constants
-    private final int ROWS = 15;
-    private final int COLS = 14;
-    private final int LEFT_OFFSET = 30;
-    private final int MARGIN = 5;
-    private final int TILE_SIZE = 50;
+    public static final Point COG = new Point(0, -2); // center of gravity, the x&y axis offsets from top left point, for this case its bottom left
+    public static final int OBSTACLE_SIZE = 3; // 3x3
+    public static final int ROWS = 50;
+
+    private final int COLS = 50;
+    private final int LEFT_OFFSET = 20;
+    private final int MARGIN = 2;
+    private final int TILE_SIZE = 15;
+    private final int ROBOT_SIZE = 3; // 3x3
+    // end of constants
 
     // paint brushes
     private final Paint mBlackPaintBrushFill;
@@ -53,7 +61,7 @@ public class ArenaView extends RelativeLayout {
         mBlackPaintBrushFill = new Paint();
         mBlackPaintBrushFill.setColor(Color.BLACK);
         mBlackPaintBrushFill.setStyle(Paint.Style.FILL);
-        mBlackPaintBrushFill.setTextSize(16f);
+        mBlackPaintBrushFill.setTextSize(12f);
         mBlackPaintBrushFill.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
 
         mBluePaintBrushFill = new Paint();
@@ -70,13 +78,16 @@ public class ArenaView extends RelativeLayout {
                 mRects[m][n] = new Rect();
                 mRects[m][n].set(left, top, right, bottom);
 
+                // calculate whether the new tile should be COG
+                boolean isCOG = (n % (ROBOT_SIZE) == 0);
+
                 // add tile view to rect
                 // stretch some offset height for most bottom rows
                 int offset = (m == ROWS - 1) ? 4 : 0;
                 RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(TILE_SIZE - MARGIN, TILE_SIZE - MARGIN + offset);
                 params.leftMargin = left;
                 params.topMargin = top;
-                ArenaTileView tileView = new ArenaTileView(getContext(), left, top, n, m, TILE_SIZE, this);
+                ArenaTileView tileView = new ArenaTileView(getContext(), left, top, n, m, TILE_SIZE, isCOG, this);
                 addView(tileView, params);
 
                 // save tile to array
@@ -84,7 +95,7 @@ public class ArenaView extends RelativeLayout {
 
                 // save coordinates X
                 if (m == 0)
-                    mCoordsX[n] = new Point(n * TILE_SIZE + TILE_SIZE, TILE_SIZE * ROWS + MARGIN + 20);
+                    mCoordsX[n] = new Point(n * TILE_SIZE + TILE_SIZE * 2 - 8, TILE_SIZE * ROWS + MARGIN + 20);
             }
 
             // save coordinates Y
@@ -102,67 +113,65 @@ public class ArenaView extends RelativeLayout {
                 canvas.drawRect(mRects[m][n], mBluePaintBrushFill);
 
                 if (m == 0) {
-                    // draw coordinates X
+                    // draw coordinates X, by 5 interval
                     Point point = mCoordsX[n];
-//                    if (n < 10) {
-//                        // add some offset to digit if x < 10
-//                        point.x += 2;
-//                    }
-                    canvas.drawText(String.valueOf(n), point.x, point.y, mBlackPaintBrushFill);
+                    if (((n + 1) % 5 == 0) || n == 0)
+                        canvas.drawText(String.valueOf(n + 1), n < 9 ? point.x + 3 : point.x, point.y, mBlackPaintBrushFill);
                 }
             }
 
-            // draw coordinates Y
+            // draw coordinates Y, by 5 interval
             Point point = mCoordsY[m];
-            canvas.drawText(String.valueOf(m), point.x, point.y, mBlackPaintBrushFill);
+            if (((ROWS - m) % 5 == 0) || (m == ROWS - 1))
+                canvas.drawText(String.valueOf(ROWS - m), point.x, point.y, mBlackPaintBrushFill);
         }
     }
 
     /** On receive message from robot, passed from MainActivity */
     public void onMessage(String message, MainActivity mainActivity) {
         // handle special message for c10, to be deleted in future
-        if (message.toLowerCase().contains("robot")) {
-            int x = Integer.valueOf(message.split(",")[1]);
-            int y = Integer.valueOf(message.split(",")[2]);
-            char dir = message.split(",")[3].charAt(0);
-
-            updateRobotPosition(x, y, getIntFromDir(dir));
-
-            return;
-        }
+//        if (message.toLowerCase().contains("robot")) {
+//            int x = Integer.valueOf(message.split(",")[1]);
+//            int y = Integer.valueOf(message.split(",")[2]);
+//            char dir = message.split(",")[3].charAt(0);
+//
+//            updateRobotPosition(x, y, getIntFromDir(dir));
+//
+//            return;
+//        }
         // end of handling
 
         // handle special message for c9, to be deleted in future
-        if (message.toLowerCase().contains("target")) {
-            int obstacleId = Integer.valueOf(message.split(",")[1]);
-            int targetId = Integer.valueOf(message.split(",")[2]);
-            char dir = message.split(",")[3].charAt(0);
-
-            Log.e("MainActivity", "detected image, obstacleId: " + obstacleId + ", targetId: " + targetId);
-
-            ArenaTileView tile = getTileFromObstacleId(obstacleId);
-
-            if (tile != null && tile.getObstacle() != null) {
-                tile.getObstacle().setImageTargetId(targetId);
-                tile.getObstacle().setImageDir(dir);
-            }
-
-            return;
-        }
+//        if (message.toLowerCase().contains("target")) {
+//            int obstacleId = Integer.valueOf(message.split(",")[1]);
+//            int targetId = Integer.valueOf(message.split(",")[2]);
+//            char dir = message.split(",")[3].charAt(0);
+//
+//            Log.e("MainActivity", "detected image, obstacleId: " + obstacleId + ", targetId: " + targetId);
+//
+//            ArenaTileView tile = getTileFromObstacleId(obstacleId);
+//
+//            if (tile != null && tile.getObstacle() != null) {
+//                tile.getObstacle().setImageTargetId(targetId);
+//                tile.getObstacle().setImageDir(dir);
+//            }
+//
+//            return;
+//        }
 
         // handle special message for c4
-        if (message.toLowerCase().contains("status")) {
-            JSONObject msgObj;
-            try {
-                msgObj = new JSONObject(message);
-                String status = msgObj.getString("status");
-                mainActivity.mReadBuffer.setText(status + " (" + msgObj + ")");
-            } catch (JSONException e) {
-                mainActivity.mReadBuffer.setText(message);
-            }
-
-            return;
-        }
+//        if (message.toLowerCase().contains("status")) {
+//            JSONObject msgObj;
+//            try {
+//                msgObj = new JSONObject(message);
+//                String status = msgObj.getString("status");
+//                mainActivity.mReadBuffer.setText(status + " (" + msgObj + ")");
+//            } catch (JSONException e) {
+//                mainActivity.mReadBuffer.setText(message);
+//            }
+//
+//            return;
+//        }
 
         JSONObject msgObj;
         try {
@@ -173,6 +182,8 @@ public class ArenaView extends RelativeLayout {
 
             return;
         }
+
+
 
         // robotPosition
         JSONArray robotPosition = null;
@@ -210,13 +221,13 @@ public class ArenaView extends RelativeLayout {
         }
 
         // status
-//        String status;
-//        try {
-//            status = msgObj.getString("status");
-//            mainActivity.mReadBuffer.setText(status + " (" + msgObj + ")");
-//        } catch (Exception e) {
-//            Log.e("MainActivity", e.getMessage());
-//        }
+        String status;
+        try {
+            status = msgObj.getString("status");
+            mainActivity.mReadBuffer.setText(status + " (" + msgObj + ")");
+        } catch (Exception e) {
+            Log.e("MainActivity", e.getMessage());
+        }
     }
 
     private void updateRobotPosition(int x, int y, int dirInt) {
@@ -308,10 +319,18 @@ public class ArenaView extends RelativeLayout {
 
         Log.e("MainActivity", "adding obstacle ...");
 
-        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(TILE_SIZE - MARGIN, TILE_SIZE - MARGIN);
+        // increase the size of the obstacle to fit across multiple tiles according to OBSTACLE_SIZE
+        // RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(TILE_SIZE - MARGIN, TILE_SIZE - MARGIN);
+        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(TILE_SIZE * OBSTACLE_SIZE - MARGIN, TILE_SIZE * OBSTACLE_SIZE - MARGIN);
+
+        /*params.leftMargin = tileView.getCoordX();
+        params.topMargin = tileView.getCoordY();*/
+        tileView = getTopLeftTileFromCOGTile(tileView);
+        if (tileView == null) return null;
         params.leftMargin = tileView.getCoordX();
         params.topMargin = tileView.getCoordY();
-        ObstacleView obstacleView = new ObstacleView(getContext(), obstacleSpawned, tileView.getCoordX(), tileView.getCoordY(), tileView.getIdxX(), tileView.getIdxY(), TILE_SIZE);
+
+        ObstacleView obstacleView = new ObstacleView(getContext(), obstacleSpawned, tileView.getCoordX(), tileView.getCoordY(), tileView.getIdxX(), tileView.getIdxY(), TILE_SIZE * OBSTACLE_SIZE);
         addView(obstacleView, params);
         tileView.setObstacle(obstacleView);
         obstacleSpawned++;
@@ -352,6 +371,10 @@ public class ArenaView extends RelativeLayout {
         ObstacleView obstacleView = fromTile.getObstacle();
         RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) obstacleView.getLayoutParams();
 
+        toTile = getTopLeftTileFromCOGTile(toTile);
+
+        if (toTile == null) return;
+
         layoutParams.leftMargin = toTile.getCoordX();
         layoutParams.topMargin = toTile.getCoordY();
 
@@ -372,5 +395,55 @@ public class ArenaView extends RelativeLayout {
         }
 
         return null;
+    }
+
+    private ArenaTileView getTileFromIdx(int x, int y) {
+        if (x < 0 || x >= COLS) return null;
+        if (y < 0 || y >= ROWS) return null;
+
+        return this.mTiles[y][x];
+    }
+
+    /** convert axis to idx on arena map */
+    private Point getIdxFromAxis(Point axis) {
+        return new Point(axis.x - 1, ROWS - axis.y);
+    }
+
+    private ArenaTileView getTopLeftTileFromCOGTile(ArenaTileView COGTile) {
+        Point cogTileAxis = COGTile.getAxisFromIdx();
+        Point topLeftTileAxis = new Point(cogTileAxis.x - COG.x, cogTileAxis.y - COG.y);
+        Point topLeftIdx = getIdxFromAxis(topLeftTileAxis);
+
+        return getTileFromIdx(topLeftIdx.x, topLeftIdx.y);
+    }
+
+    /** create a tile group on map based on the provided top left axis */
+    public void createTileGroup(Point topLeftAxis) {
+        Point topLeftIdx = getIdxFromAxis(topLeftAxis);
+        List<ArenaTileView> tileList = new ArrayList<>();
+        boolean isGroup = true;
+
+        // set all tiles as highlighted based on the OBSTACLE_SIZE, starting from top left tile
+        for (int m = 0; m < OBSTACLE_SIZE; m++) {
+            for (int n = 0; n < OBSTACLE_SIZE; n++) {
+                ArenaTileView tile = getTileFromIdx(topLeftIdx.x + n, topLeftIdx.y + m);
+                if (tile == null) {
+                    // if any tile is null, the whole group cannot be formed, just exit the function
+                    isGroup = false;
+                    break;
+                } else {
+                    tileList.add(tile);
+                }
+            }
+
+            if (!isGroup) break;
+        }
+
+        if (isGroup) {
+            // highlight all tiles in the list
+            for (ArenaTileView tile : tileList) {
+                tile.setHighlighted(true);
+            }
+        }
     }
 }

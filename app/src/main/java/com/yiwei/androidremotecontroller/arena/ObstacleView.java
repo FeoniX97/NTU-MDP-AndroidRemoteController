@@ -69,7 +69,7 @@ public class ObstacleView extends View {
         TypedArray attrArr = context.obtainStyledAttributes(attrs, R.styleable.ObstacleView);
 
         isLegend = attrArr.getBoolean(R.styleable.ObstacleView_isLegend, true);
-        size = attrArr.getInt(R.styleable.ObstacleView_size, 45);
+        size = attrArr.getInt(R.styleable.ObstacleView_size, 25);
 
         attrArr.recycle();
 

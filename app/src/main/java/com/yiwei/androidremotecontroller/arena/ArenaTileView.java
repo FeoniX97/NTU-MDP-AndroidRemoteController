@@ -22,6 +22,7 @@ public class ArenaTileView extends View {
     private final int idxY;
     private final int size;
     private final ArenaView arenaView;
+    private final boolean isCOG; // whether this tile is the center of gravity for the 3x3 tile group
 
     private final Paint mBluePaintBrushFill;
     private final Paint mOrangePaintBrushFill;
@@ -30,7 +31,7 @@ public class ArenaTileView extends View {
     private ObstacleView mObstacle;
     private boolean mHighlighted = false;
 
-    public ArenaTileView(Context context, int coordX, int coordY, int idxX, int idxY, int size, ArenaView arenaView) {
+    public ArenaTileView(Context context, int coordX, int coordY, int idxX, int idxY, int size, boolean isCOG, ArenaView arenaView) {
         super(context);
 
         this.coordX = coordX;
@@ -38,12 +39,12 @@ public class ArenaTileView extends View {
         this.idxX = idxX;
         this.idxY = idxY;
         this.size = size;
+        this.isCOG = isCOG;
         this.arenaView = arenaView;
 
         mBluePaintBrushFill = new Paint();
         mBluePaintBrushFill.setColor(Color.rgb(169, 229, 253));
         mBluePaintBrushFill.setStyle(Paint.Style.FILL);
-        // mBluePaintBrushFill.setAlpha(122);
 
         mOrangePaintBrushFill = new Paint();
         mOrangePaintBrushFill.setColor(Color.rgb(255, 152, 0));
@@ -121,8 +122,13 @@ public class ArenaTileView extends View {
                         this.arenaView.mainActivity.sendMessageToAMD("{ \"addObstacle:\" [" + newObstacle.getIdxX() + ", " + newObstacle.getIdxY() + ", " + newObstacle.getId() + "] }");
                     }
 
-                    // remove highlight
-                    this.setHighlighted(false);
+                    // inform arena to create new obstacle from legend
+                    // get the tile group top left axis, based on this current tile as the COG
+                    /*Point currentAxis = getAxisFromIdx();
+                    Point topLeftAxis = new Point(currentAxis.x - ArenaView.COG.x, currentAxis.y - ArenaView.COG.y);
+
+                    // inform arena to create tile group highlighting
+                    this.arenaView.createTileGroup(topLeftAxis);*/
 
                     // Return true. DragEvent.getResult() returns true.
                     return true;
@@ -190,5 +196,10 @@ public class ArenaTileView extends View {
 
     public int getSize() {
         return size;
+    }
+
+    /** convert idx to axis on arena map */
+    public Point getAxisFromIdx() {
+        return new Point(this.idxX + 1, ArenaView.ROWS - this.idxY);
     }
 }
