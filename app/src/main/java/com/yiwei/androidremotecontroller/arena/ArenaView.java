@@ -105,7 +105,7 @@ public class ArenaView extends RelativeLayout {
 
     public void onMainActivityProvided() {
         // spawn robot at bottom left
-        Point idxPoint = getIdxFromAxis(new Point(1, 1));
+        Point idxPoint = getIdxFromAxis(new Point(0, 0));
         updateRobotPosition(idxPoint.x, idxPoint.y, 0);
 
         // add some obstacles
@@ -128,15 +128,23 @@ public class ArenaView extends RelativeLayout {
                 if (m == 0) {
                     // draw coordinates X, by 5 interval
                     Point point = mCoordsX[n];
-                    if (((n + 1) % 5 == 0) || n == 0)
-                        canvas.drawText(String.valueOf(n + 1), n < 9 ? point.x + 3 : point.x, point.y, mBlackPaintBrushFill);
+                    if (n % 5 == 0)
+                        canvas.drawText(String.valueOf(n), n < 9 ? point.x + 3 : point.x, point.y, mBlackPaintBrushFill);
+
+                    // draw the last x-axis
+                    if (n == COLS - 1)
+                        canvas.drawText(String.valueOf(n + 1), point.x + TILE_SIZE, point.y, mBlackPaintBrushFill);
                 }
             }
 
             // draw coordinates Y, by 5 interval
             Point point = mCoordsY[m];
-            if (((ROWS - m) % 5 == 0) || (m == ROWS - 1))
-                canvas.drawText(String.valueOf(ROWS - m), point.x, point.y, mBlackPaintBrushFill);
+            if ((ROWS - m - 1) % 5 == 0)
+                canvas.drawText(String.valueOf(ROWS - m - 1), point.x, point.y, mBlackPaintBrushFill);
+
+            // draw the last y-axis
+//            if (m == 0)
+//                canvas.drawText("0", point.x, point.y - 5, mBlackPaintBrushFill);
         }
     }
 
@@ -196,18 +204,28 @@ public class ArenaView extends RelativeLayout {
             return;
         }
 
-
-
         // robotPosition
-        JSONArray robotPosition = null;
+//        JSONArray robotPosition;
+//        try {
+//            robotPosition = msgObj.getJSONArray("robotPosition");
+//            int x = robotPosition.getInt(0);
+//            int y = robotPosition.getInt(1);
+//            int dirInt = robotPosition.getInt(2);
+//
+//            // spawn robot or change robot location if coordinates changes
+//            updateRobotPosition(x, y, dirInt);
+//        } catch (JSONException ignored) {}
+        JSONObject robot;
         try {
-            robotPosition = msgObj.getJSONArray("robotPosition");
-            int x = robotPosition.getInt(0);
-            int y = robotPosition.getInt(1);
-            int dirInt = robotPosition.getInt(2);
+            robot = msgObj.getJSONObject("robot");
+            int x = robot.getInt("x");
+            int y = robot.getInt("y");
+            String dirStr = robot.getString("dir");
 
             // spawn robot or change robot location if coordinates changes
-            updateRobotPosition(x, y, dirInt);
+            Point idxPoint = getIdxFromAxis(new Point(x, y));
+            updateRobotPosition(idxPoint.x, idxPoint.y,  getIntFromDirStr(dirStr));
+            mainActivity.mReadBuffer.setText("robot: x: " + x + ", y: " + y + ", dir: " + dirStr);
         } catch (JSONException ignored) {}
 
         // obstacle
@@ -233,22 +251,47 @@ public class ArenaView extends RelativeLayout {
             Log.e("MainActivity", e.getMessage());
         }
 
+        // BT
+        JSONObject btObj;
+        String btStatus = "";
+        try {
+            btObj = msgObj.getJSONObject("bt");
+            String addr = btObj.getString("addr");
+            btStatus = "addr: " + addr;
+        } catch (Exception e) {
+            Log.e("MainActivity", e.getMessage());
+        }
+        try {
+            btObj = msgObj.getJSONObject("bt");
+            String name = btObj.getString("name");
+            btStatus += ", name: " + name;
+        } catch (Exception e) {
+            Log.e("MainActivity", e.getMessage());
+        }
+        if (!btStatus.isEmpty()) {
+            mainActivity.mReadBuffer.setText("Robot Connected. " + btStatus);
+        }
+
         // status
         String status;
         try {
             status = msgObj.getString("status");
-            mainActivity.mReadBuffer.setText(status + " (" + msgObj + ")");
+            mainActivity.mReadBuffer.setText(status);
         } catch (Exception e) {
             Log.e("MainActivity", e.getMessage());
         }
     }
 
+    /** x&y are idx!!! */
     public void updateRobotPosition(int x, int y, int dirInt) {
         if (mRobot == null || mRobot.getIdxX() != x || mRobot.getIdxY() != y) {
             Log.e("MainActivity", "new robot coord: " + x + ", " + y);
 
             // display the new robot coordinates in textbox
-            // ((EditText) mainActivity.findViewById(R.id.tb_coord)).setText(x + ", " + y);
+            try {
+                Point axisPoint = getAxisFromIdx(new Point(x, y));
+                ((EditText) mainActivity.findViewById(R.id.tb_coord)).setText(axisPoint.x + ", " + axisPoint.y);
+            } catch (Exception ignored) {}
 
             // spawn and display the robot on arena, delete the old one if already exists
             if (mRobot != null) {
@@ -377,6 +420,7 @@ public class ArenaView extends RelativeLayout {
         params.topMargin = topLeftTileView.getCoordY();
 
         ObstacleView obstacleView = new ObstacleView(getContext(), obstacleSpawned, COGTileView.getCoordX(), COGTileView.getCoordY(), COGTileView.getIdxX(), COGTileView.getIdxY(), TILE_SIZE * OBSTACLE_SIZE);
+        obstacleView.mainActivity = this.mainActivity;
         addView(obstacleView, params);
         tileView.setObstacle(obstacleView);
         obstacleSpawned++;
@@ -461,7 +505,12 @@ public class ArenaView extends RelativeLayout {
 
     /** convert axis to idx on arena map */
     public Point getIdxFromAxis(Point axis) {
-        return new Point(axis.x - 1, ROWS - axis.y);
+        // return new Point(axis.x - 1, ROWS - axis.y);
+        return new Point(axis.x, ROWS - (axis.y + 1));
+    }
+
+    public Point getAxisFromIdx(Point idxPoint) {
+        return new Point(idxPoint.x, ArenaView.ROWS - idxPoint.y - 1);
     }
 
     private ArenaTileView getTopLeftTileFromCOGTile(ArenaTileView COGTile) {
@@ -515,5 +564,18 @@ public class ArenaView extends RelativeLayout {
                 tile.setHighlighted(true);
             }
         }
+    }
+
+    /** reset the arena, clearing all obstacles */
+    public void reset() {
+        for (int m = 0; m < ROWS; m++) {
+            for (int n = 0; n < ROWS; n++) {
+                ArenaTileView tile = mTiles[m][n];
+                if (tile.getObstacle() != null)
+                    removeObstacle(tile);
+            }
+        }
+
+        updateRobotPosition(0, 49, 0);
     }
 }

@@ -10,6 +10,7 @@
     android:paddingLeft="5dp"
     android:paddingRight="0dp"
     android:paddingBottom="@dimen/activity_vertical_margin"
+    android:visibility="visible"
     tools:context="com.yiwei.androidremotecontroller.MainActivity">
 
     <LinearLayout
@@ -187,14 +188,45 @@
 
             <LinearLayout
                 android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginStart="15dp"
+                android:layout_marginLeft="15dp"
+                android:layout_weight="1"
+                android:gravity="bottom"
+                android:orientation="vertical"
+                android:visibility="visible">
+
+                <EditText
+                    android:id="@+id/tb_obs_coord"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/edit_text_border"
+                    android:ems="10"
+                    android:hint="x,y"
+                    android:inputType="text" />
+
+                <Button
+                    android:id="@+id/btn_add_obs"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:background="#2196F3"
+                    android:text="Add Obstacle"
+                    android:textColor="#FFFFFF" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="15dp"
                 android:layout_marginLeft="15dp"
                 android:layout_weight="0.1"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:visibility="gone">
 
                 <EditText
-                    android:id="@+id/tb_message"
+                    android:id="@+id/tb_obs_coord"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="@drawable/edit_text_border"
@@ -204,7 +236,7 @@
                     android:text='{"obstacle" : [0, 14, 1]}' />
 
                 <Button
-                    android:id="@+id/btn_send_msg"
+                    android:id="@+id/btn_add_obs"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="5dp"

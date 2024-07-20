@@ -8,7 +8,7 @@
         android:title="Target Id: " />
     <item
         android:id="@+id/top"
-        android:title="Top" />
+        android:title="Up" />
     <item
         android:id="@+id/left"
         android:title="Left" />
@@ -17,8 +17,11 @@
         android:title="Right" />
     <item
         android:id="@+id/bottom"
-        android:title="Bottom" />
+        android:title="Down" />
     <item
         android:id="@+id/clear"
-        android:title="Clear" />
+        android:title="Clear Direction" />
+    <item
+        android:id="@+id/remove_obstacle"
+        android:title="Remove Obstacle" />
 </menu>

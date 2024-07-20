@@ -32,12 +32,12 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.yiwei.androidremotecontroller.algo.Algo;
+import com.yiwei.androidremotecontroller.arena.ArenaTileView;
 import com.yiwei.androidremotecontroller.arena.ArenaView;
 import com.yiwei.androidremotecontroller.arena.ObstacleView;
 
@@ -76,9 +76,11 @@ public class MainActivity extends AppCompatActivity {
     private EditText mCoord;
     private EditText mDirection;
     private EditText mMessage;
+    private EditText mObsCoord;
     private Button mSendMsg;
+    private Button mAddObs;
     private Button mStart;
-    private ArenaView mArenaView;
+    public ArenaView mArenaView;
 
     private BluetoothAdapter mBTAdapter;
     private Set<BluetoothDevice> mPairedDevices;
@@ -101,8 +103,10 @@ public class MainActivity extends AppCompatActivity {
         mReverse = (Button) findViewById(R.id.btn_reverse);
         mCoord = (EditText) findViewById(R.id.tb_coord);
         mDirection = (EditText) findViewById(R.id.tb_direction);
-        mMessage = (EditText) findViewById(R.id.tb_message);
-        mSendMsg = (Button) findViewById(R.id.btn_send_msg);
+        //mMessage = (EditText) findViewById(R.id.tb_obs_coord);
+        mObsCoord = (EditText) findViewById(R.id.tb_obs_coord);
+        //mSendMsg = (Button) findViewById(R.id.btn_add_obs);
+        mAddObs = (Button) findViewById(R.id.btn_add_obs);
         mStart = (Button) findViewById(R.id.btn_start);
         mArenaView = (ArenaView) findViewById(R.id.arena_view);
 
@@ -123,11 +127,20 @@ public class MainActivity extends AppCompatActivity {
         if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
 
-        mSendMsg.setOnClickListener(view -> {
-            // sendMessageToArena(((EditText)findViewById(R.id.tb_message)).getText().toString());
+//        mSendMsg.setOnClickListener(view -> {
+//            // sendMessageToArena(((EditText)findViewById(R.id.tb_message)).getText().toString());
+//
+//            // send message to AMD
+//            mConnectedThread.write(((EditText)findViewById(R.id.tb_obs_coord)).getText().toString());
+//        });
 
-            // send message to AMD
-            mConnectedThread.write(((EditText)findViewById(R.id.tb_message)).getText().toString());
+        mAddObs.setOnClickListener(view -> {
+            String obsCoord = mObsCoord.getText().toString();
+            obsCoord = obsCoord.replaceAll(" ", "");
+            int x = Integer.parseInt(obsCoord.split(",")[0]);
+            int y = Integer.parseInt(obsCoord.split(",")[1]);
+            ArenaTileView tile = mArenaView.getTileFromAxis(x, y);
+            this.mArenaView.addObstacle(tile);
         });
 
         mStart.setOnClickListener(view -> {
@@ -151,6 +164,9 @@ public class MainActivity extends AppCompatActivity {
                 throw new RuntimeException(e);
             }
 
+            // send path to robot
+            sendMessageToAMD(pathObj.toString());
+
             Log.e("algo", "path size: " + pathArr.length());
 
             // move robot
@@ -168,15 +184,6 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     Log.e("algo", "robot status: " + obj);
-
-                    // increment x & y by 1 for algo, algo axis start from 0 but app axis start from 1
-                    try {
-                        Point arenaPoint = Algo.getArenaPointFromAlgoPoint(obj.getInt("x"), obj.getInt("y"));
-                        obj.put("x", arenaPoint.x);
-                        obj.put("y", arenaPoint.y);
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
 
                     // move robot
                     Point idxPoint;
@@ -203,7 +210,7 @@ public class MainActivity extends AppCompatActivity {
                 if(msg.what == MESSAGE_READ){
                     String readMessage = null;
                     readMessage = new String((byte[]) msg.obj, StandardCharsets.UTF_8);
-                    mReadBuffer.setText(readMessage);
+                    // mReadBuffer.setText(readMessage);
                     Log.e("MainActivity", "message: " + readMessage);
 
                     sendMessageToArena(readMessage);
@@ -231,23 +238,51 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(getApplicationContext(),getString(R.string.sBTdevNF),Toast.LENGTH_SHORT).show();
         } else {
             mForward.setOnClickListener(view -> {
-                if(mConnectedThread != null) //First check to make sure thread created
-                    sendMessageToAMD("f");
+                if(mConnectedThread != null) {
+                    JSONObject obj = new JSONObject();
+                    try {
+                        obj.put("move", "f");
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+                    sendMessageToAMD(obj.toString());
+                }
             });
 
             mReverse.setOnClickListener(view -> {
-                if(mConnectedThread != null) //First check to make sure thread created
-                    sendMessageToAMD("r");
+                if(mConnectedThread != null) {
+                    JSONObject obj = new JSONObject();
+                    try {
+                        obj.put("move", "b");
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+                    sendMessageToAMD(obj.toString());
+                }
             });
 
             mTurnLeft.setOnClickListener(view -> {
-                if(mConnectedThread != null) //First check to make sure thread created
-                    sendMessageToAMD("tl");
+                if(mConnectedThread != null) {
+                    JSONObject obj = new JSONObject();
+                    try {
+                        obj.put("move", "l");
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+                    sendMessageToAMD(obj.toString());
+                }
             });
 
             mTurnRight.setOnClickListener(view -> {
-                if(mConnectedThread != null) //First check to make sure thread created
-                    sendMessageToAMD("tr");
+                if(mConnectedThread != null) {
+                    JSONObject obj = new JSONObject();
+                    try {
+                        obj.put("move", "r");
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+                    sendMessageToAMD(obj.toString());
+                }
             });
         }
 
@@ -304,6 +339,9 @@ public class MainActivity extends AppCompatActivity {
             case R.id.connect:
                 discover();
                 return true;
+            case R.id.reset_arena:
+                mArenaView.reset();
+                return true;
 //            case R.id.disconnect:
 //                listPairedDevices();
 //                return true;
@@ -339,7 +377,9 @@ public class MainActivity extends AppCompatActivity {
 
     public void sendMessageToAMD(String message) {
         Log.e(TAG, "sending message to AMD: " + message);
-        mConnectedThread.write(message);
+        try {
+            mConnectedThread.write(message);
+        } catch (Exception ignored) {}
     }
 
     private void bluetoothOn(){

@@ -225,6 +225,9 @@ public class ObstacleView extends View {
                             setImageDir(IMAGE_DIR_NONE);
                             setImageTargetId(-1);
                             break;
+                        case R.id.remove_obstacle:
+                            ObstacleView.this.mainActivity.mArenaView.removeObstacle(ObstacleView.this.getId());
+                            break;
                     }
                 } catch (Exception e) {
                     throw new RuntimeException(e);
@@ -343,7 +346,8 @@ public class ObstacleView extends View {
 
     /** convert idx to axis on arena map */
     public Point getAxisFromIdx() {
-        return new Point(this.idxX + 1, ArenaView.ROWS - this.idxY);
+        // return new Point(this.idxX + 1, ArenaView.ROWS - this.idxY);
+        return new Point(this.idxX, ArenaView.ROWS - this.idxY - 1);
     }
 
     @Override

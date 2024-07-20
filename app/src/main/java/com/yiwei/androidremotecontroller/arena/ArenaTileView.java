@@ -200,6 +200,7 @@ public class ArenaTileView extends View {
 
     /** convert idx to axis on arena map */
     public Point getAxisFromIdx() {
-        return new Point(this.idxX + 1, ArenaView.ROWS - this.idxY);
+        // return new Point(this.idxX + 1, ArenaView.ROWS - this.idxY);
+        return new Point(this.idxX, ArenaView.ROWS - this.idxY - 1);
     }
 }

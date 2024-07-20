@@ -12,6 +12,9 @@
     <item
         android:id="@+id/direct_connect"
         android:title="Reconnect" />
+    <item
+        android:id="@+id/reset_arena"
+        android:title="Reset Arena" />
 <!--    <item-->
 <!--        android:id="@+id/disconnect"-->
 <!--        android:title="Disconnect" />-->
