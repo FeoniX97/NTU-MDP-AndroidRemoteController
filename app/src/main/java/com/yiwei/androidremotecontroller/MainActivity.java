@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Point;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -36,14 +37,18 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.yiwei.androidremotecontroller.algo.Algo;
 import com.yiwei.androidremotecontroller.arena.ArenaView;
+import com.yiwei.androidremotecontroller.arena.ObstacleView;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -72,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText mDirection;
     private EditText mMessage;
     private Button mSendMsg;
+    private Button mStart;
     private ArenaView mArenaView;
 
     private BluetoothAdapter mBTAdapter;
@@ -97,10 +103,13 @@ public class MainActivity extends AppCompatActivity {
         mDirection = (EditText) findViewById(R.id.tb_direction);
         mMessage = (EditText) findViewById(R.id.tb_message);
         mSendMsg = (Button) findViewById(R.id.btn_send_msg);
+        mStart = (Button) findViewById(R.id.btn_start);
         mArenaView = (ArenaView) findViewById(R.id.arena_view);
 
-        if (mArenaView != null)
+        if (mArenaView != null) {
             mArenaView.mainActivity = this;
+            mArenaView.onMainActivityProvided();
+        }
 
         mCoord.setFocusable(false);
         mDirection.setFocusable(false);
@@ -119,6 +128,73 @@ public class MainActivity extends AppCompatActivity {
 
             // send message to AMD
             mConnectedThread.write(((EditText)findViewById(R.id.tb_message)).getText().toString());
+        });
+
+        mStart.setOnClickListener(view -> {
+            List<ObstacleView> listObstacle = mArenaView.getObstacles();
+            Algo algo = Algo.setObstacleSize(listObstacle.size());
+
+            Log.e("algo", "algo set obstacle size: " + listObstacle.size());
+
+            for (ObstacleView obstacle : listObstacle) {
+                Log.e("algo", "adding obstacle to algo: " + obstacle);
+                algo.addObstacle(obstacle.getAxisFromIdx(), obstacle.getImageDirStr(), obstacle.getId());
+            }
+
+            JSONObject pathObj;
+            JSONArray pathArr;
+            try {
+                pathObj = algo.buildPath();
+                Log.e("algo", "path: " + pathObj);
+                pathArr = pathObj.getJSONArray("path");
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
+
+            Log.e("algo", "path size: " + pathArr.length());
+
+            // move robot
+            Handler moveDelayHandler = new Handler();
+            Runnable moveDelayTimer = new Runnable() {
+                private int idx = 0;
+
+                @Override
+                public void run() {
+                    JSONObject obj;
+                    try {
+                        obj = pathArr.getJSONObject(idx);
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    Log.e("algo", "robot status: " + obj);
+
+                    // increment x & y by 1 for algo, algo axis start from 0 but app axis start from 1
+                    try {
+                        Point arenaPoint = Algo.getArenaPointFromAlgoPoint(obj.getInt("x"), obj.getInt("y"));
+                        obj.put("x", arenaPoint.x);
+                        obj.put("y", arenaPoint.y);
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    // move robot
+                    Point idxPoint;
+                    try {
+                        idxPoint = mArenaView.getIdxFromAxis(new Point(obj.getInt("x"), obj.getInt("y")));
+                        mArenaView.updateRobotPosition(idxPoint.x, idxPoint.y, mArenaView.getIntFromDirStr(obj.getString("dir")));
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    if (idx < pathArr.length() - 1) {
+                        moveDelayHandler.postDelayed(this, 100);
+                        idx++;
+                    }
+                }
+            };
+
+            moveDelayHandler.postDelayed(moveDelayTimer, 250);
         });
 
         mHandler = new Handler(Looper.getMainLooper()) {

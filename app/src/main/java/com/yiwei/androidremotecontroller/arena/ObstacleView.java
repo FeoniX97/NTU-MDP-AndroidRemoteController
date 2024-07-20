@@ -6,6 +6,7 @@ import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.support.annotation.Nullable;
@@ -137,8 +138,8 @@ public class ObstacleView extends View {
 
         mRectTopBorder.set(0, 0, size, 3);
         mRectLeftBorder.set(0, 0, 3, size);
-        mRectRightBorder.set(size - 8, 0, size, size);
-        mRectBottomBorder.set(0, size - 8, size, size);
+        mRectRightBorder.set(size - 6, 0, size, size);
+        mRectBottomBorder.set(0, size - 6, size, size);
 
         // create another set of thicker border rect
         mRectTopBorderThick = new Rect();
@@ -148,8 +149,8 @@ public class ObstacleView extends View {
 
         mRectTopBorderThick.set(0, 0, size, 6);
         mRectLeftBorderThick.set(0, 0, 6, size);
-        mRectRightBorderThick.set(size - 11, 0, size, size);
-        mRectBottomBorderThick.set(0, size - 11, size, size);
+        mRectRightBorderThick.set(size - 9, 0, size, size);
+        mRectBottomBorderThick.set(0, size - 9, size, size);
 
         setupPopupMenu();
         setupDraggable();
@@ -292,6 +293,21 @@ public class ObstacleView extends View {
         return mImageDir;
     }
 
+    public String getImageDirStr() {
+        switch (this.mImageDir) {
+            case 'n':
+                return "up";
+            case 'e':
+                return "right";
+            case 'w':
+                return "left";
+            case 's':
+                return "down";
+        }
+
+        return "null";
+    }
+
     public void setImageDir(char mImageDir) {
         mImageDir = Character.toLowerCase(mImageDir);
 
@@ -323,5 +339,22 @@ public class ObstacleView extends View {
 
         // redraw the obstacle
         invalidate();
+    }
+
+    /** convert idx to axis on arena map */
+    public Point getAxisFromIdx() {
+        return new Point(this.idxX + 1, ArenaView.ROWS - this.idxY);
+    }
+
+    @Override
+    public String toString() {
+        Point axis = getAxisFromIdx();
+
+        return "ObstacleView{" +
+                "id=" + id +
+                ", X=" + axis.x +
+                ", Y=" + axis.y +
+                ", imageDir=" + getImageDirStr() +
+                '}';
     }
 }

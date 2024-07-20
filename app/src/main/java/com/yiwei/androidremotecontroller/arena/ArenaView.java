@@ -103,6 +103,19 @@ public class ArenaView extends RelativeLayout {
         }
     }
 
+    public void onMainActivityProvided() {
+        // spawn robot at bottom left
+        Point idxPoint = getIdxFromAxis(new Point(1, 1));
+        updateRobotPosition(idxPoint.x, idxPoint.y, 0);
+
+        // add some obstacles
+        addObstacle(getTileFromAxis(10, 37), 'n');
+        addObstacle(getTileFromAxis(20, 33), 's');
+        addObstacle(getTileFromAxis(30, 20), 'n');
+        addObstacle(getTileFromAxis(43, 10), 'w');
+        addObstacle(getTileFromAxis(25, 32), 'n');
+    }
+
     /** Draw the Arena background */
     @Override
     protected void onDraw(Canvas canvas) {
@@ -230,12 +243,12 @@ public class ArenaView extends RelativeLayout {
         }
     }
 
-    private void updateRobotPosition(int x, int y, int dirInt) {
+    public void updateRobotPosition(int x, int y, int dirInt) {
         if (mRobot == null || mRobot.getIdxX() != x || mRobot.getIdxY() != y) {
             Log.e("MainActivity", "new robot coord: " + x + ", " + y);
 
             // display the new robot coordinates in textbox
-            ((EditText) mainActivity.findViewById(R.id.tb_coord)).setText(x + ", " + y);
+            // ((EditText) mainActivity.findViewById(R.id.tb_coord)).setText(x + ", " + y);
 
             // spawn and display the robot on arena, delete the old one if already exists
             if (mRobot != null) {
@@ -243,12 +256,14 @@ public class ArenaView extends RelativeLayout {
                 mRobot = null;
             }
 
-            ArenaTileView tileView = mTiles[y][x];
-            if (tileView != null) {
-                RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(TILE_SIZE - MARGIN, TILE_SIZE - MARGIN);
-                params.leftMargin = tileView.getCoordX();
-                params.topMargin = tileView.getCoordY();
-                RobotView robotView = new RobotView(getContext(), tileView.getCoordX(), tileView.getCoordY(), tileView.getIdxX(), tileView.getIdxY(), dirInt);
+            ArenaTileView COGTile = mTiles[y][x];
+            ArenaTileView topLeftTile = getTopLeftTileFromCOGTile(COGTile);
+
+            if (topLeftTile != null) {
+                RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(TILE_SIZE * OBSTACLE_SIZE - MARGIN, TILE_SIZE * OBSTACLE_SIZE - MARGIN);
+                params.leftMargin = topLeftTile.getCoordX();
+                params.topMargin = topLeftTile.getCoordY();
+                RobotView robotView = new RobotView(getContext(), COGTile.getCoordX(), COGTile.getCoordY(), COGTile.getIdxX(), COGTile.getIdxY(), dirInt);
                 addView(robotView, params);
                 mRobot = robotView;
             }
@@ -312,7 +327,35 @@ public class ArenaView extends RelativeLayout {
         return dirInt;
     }
 
-    protected ObstacleView addObstacle(ArenaTileView tileView) {
+    public int getIntFromDirStr(String dirStr) {
+        int dirInt = -1;
+
+        switch (dirStr) {
+            case "up":
+                dirInt = 0;
+                break;
+            case "left":
+                dirInt = 270;
+                break;
+            case "down":
+                dirInt = 180;
+                break;
+            case "right":
+                dirInt = 90;
+                break;
+        }
+
+        return dirInt;
+    }
+
+    public ObstacleView addObstacle(ArenaTileView tileView, char dirChar) {
+        ObstacleView obstacle = addObstacle(tileView);
+        obstacle.setImageDir(dirChar);
+
+        return obstacle;
+    }
+
+    public ObstacleView addObstacle(ArenaTileView tileView) {
         if (tileView == null || tileView.getObstacle() != null) {
             return null;
         }
@@ -325,12 +368,15 @@ public class ArenaView extends RelativeLayout {
 
         /*params.leftMargin = tileView.getCoordX();
         params.topMargin = tileView.getCoordY();*/
-        tileView = getTopLeftTileFromCOGTile(tileView);
-        if (tileView == null) return null;
-        params.leftMargin = tileView.getCoordX();
-        params.topMargin = tileView.getCoordY();
+        ArenaTileView topLeftTileView = getTopLeftTileFromCOGTile(tileView);
+        ArenaTileView COGTileView = tileView;
 
-        ObstacleView obstacleView = new ObstacleView(getContext(), obstacleSpawned, tileView.getCoordX(), tileView.getCoordY(), tileView.getIdxX(), tileView.getIdxY(), TILE_SIZE * OBSTACLE_SIZE);
+        if (topLeftTileView == null) return null;
+
+        params.leftMargin = topLeftTileView.getCoordX();
+        params.topMargin = topLeftTileView.getCoordY();
+
+        ObstacleView obstacleView = new ObstacleView(getContext(), obstacleSpawned, COGTileView.getCoordX(), COGTileView.getCoordY(), COGTileView.getIdxX(), COGTileView.getIdxY(), TILE_SIZE * OBSTACLE_SIZE);
         addView(obstacleView, params);
         tileView.setObstacle(obstacleView);
         obstacleSpawned++;
@@ -397,15 +443,24 @@ public class ArenaView extends RelativeLayout {
         return null;
     }
 
-    private ArenaTileView getTileFromIdx(int x, int y) {
+    public ArenaTileView getTileFromIdx(int x, int y) {
         if (x < 0 || x >= COLS) return null;
         if (y < 0 || y >= ROWS) return null;
 
         return this.mTiles[y][x];
     }
 
+    public ArenaTileView getTileFromAxis(int x, int y) {
+        Point idxPoint = getIdxFromAxis(new Point(x, y));
+
+        if (idxPoint.x < 0 || idxPoint.x >= COLS) return null;
+        if (idxPoint.y < 0 || idxPoint.y >= ROWS) return null;
+
+        return this.mTiles[idxPoint.y][idxPoint.x];
+    }
+
     /** convert axis to idx on arena map */
-    private Point getIdxFromAxis(Point axis) {
+    public Point getIdxFromAxis(Point axis) {
         return new Point(axis.x - 1, ROWS - axis.y);
     }
 
@@ -415,6 +470,21 @@ public class ArenaView extends RelativeLayout {
         Point topLeftIdx = getIdxFromAxis(topLeftTileAxis);
 
         return getTileFromIdx(topLeftIdx.x, topLeftIdx.y);
+    }
+
+    /** returns a list of obstacles currently on arena */
+    public List<ObstacleView> getObstacles() {
+        List<ObstacleView> listObstacle = new ArrayList<>();
+
+        for (int m = 0; m < ROWS; m++) {
+            for (int n = 0; n < COLS; n++) {
+                ArenaTileView tile = this.mTiles[m][n];
+                if (tile.getObstacle() != null)
+                    listObstacle.add(tile.getObstacle());
+            }
+        }
+
+        return listObstacle;
     }
 
     /** create a tile group on map based on the provided top left axis */
