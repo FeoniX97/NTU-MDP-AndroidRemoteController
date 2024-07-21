@@ -7,6 +7,7 @@ import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -15,6 +16,8 @@ import android.widget.RelativeLayout;
 
 import com.yiwei.androidremotecontroller.MainActivity;
 import com.yiwei.androidremotecontroller.R;
+import com.yiwei.androidremotecontroller.algo.Algo;
+import com.yiwei.androidremotecontroller.algo.ApiTask;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -52,6 +55,7 @@ public class ArenaView extends RelativeLayout {
     private int obstacleSpawned = 0;
 
     public MainActivity mainActivity;
+    private ApiTask apiTask;
 
     public ArenaView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -577,5 +581,121 @@ public class ArenaView extends RelativeLayout {
         }
 
         updateRobotPosition(0, 49, 0);
+    }
+
+    public void calculatePathFromInternal() {
+        List<ObstacleView> listObstacle = getObstacles();
+        Algo algo = Algo.setObstacleSize(listObstacle.size());
+
+        Log.e("algo", "algo set obstacle size: " + listObstacle.size());
+
+        for (ObstacleView obstacle : listObstacle) {
+            Log.e("algo", "adding obstacle to algo: " + obstacle);
+            algo.addObstacle(obstacle.getAxisFromIdx(), obstacle.getImageDirStr(), obstacle.getId());
+        }
+
+        JSONObject pathObj;
+        JSONArray pathArr;
+        try {
+            pathObj = algo.buildPath();
+            Log.e("algo", "path: " + pathObj);
+            pathArr = pathObj.getJSONArray("path");
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+
+        // send path to robot
+        this.mainActivity.sendMessageToAMD(pathObj.toString());
+
+        Log.e("algo", "path size: " + pathArr.length());
+
+        // move robot
+        Handler moveDelayHandler = new Handler();
+        Runnable moveDelayTimer = new Runnable() {
+            private int idx = 0;
+
+            @Override
+            public void run() {
+                JSONObject obj;
+                try {
+                    obj = pathArr.getJSONObject(idx);
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+
+                Log.e("algo", "robot status: " + obj);
+
+                // move robot
+                Point idxPoint;
+                try {
+                    idxPoint = getIdxFromAxis(new Point(obj.getInt("x"), obj.getInt("y")));
+                    updateRobotPosition(idxPoint.x, idxPoint.y, getIntFromDirStr(obj.getString("dir")));
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+
+                if (idx < pathArr.length() - 1) {
+                    moveDelayHandler.postDelayed(this, 100);
+                    idx++;
+                }
+            }
+        };
+
+        moveDelayHandler.postDelayed(moveDelayTimer, 250);
+    }
+
+    public void calculatePathFromApi() {
+        List<ObstacleView> listObstacle = getObstacles();
+        JSONObject obsReqObj = new JSONObject();
+
+        JSONArray obsArr = new JSONArray();
+        for (ObstacleView obstacle : listObstacle) {
+            JSONObject obsObj = new JSONObject();
+
+            Point axisPoint = obstacle.getAxisFromIdx();
+            try {
+                obsObj.put("x", axisPoint.x);
+                obsObj.put("y", axisPoint.y);
+                obsObj.put("id", obstacle.getId());
+                obsObj.put("d", getDirIntFromStrForApi(obstacle.getImageDirStr()));
+                obsArr.put(obsObj);
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        try {
+            obsReqObj.put("obstacles", obsArr);
+            if (this.mRobot != null) {
+                Point axisPoint = mRobot.getAxisFromIdx();
+                obsReqObj.put("robot_x", axisPoint.x);
+                obsReqObj.put("robot_y", axisPoint.y);
+                obsReqObj.put("robot_dir", mRobot.getDirIntForApi());
+            }
+            obsReqObj.put("retrying", false);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+
+        this.apiTask = (ApiTask) new ApiTask(this).execute(obsReqObj);
+    }
+
+    public void onApiResult(JSONObject result) {
+        Log.e("ArenaView", result.toString());
+    }
+
+    private int getDirIntFromStrForApi(String dirStr) {
+        switch (dirStr) {
+            case "top":
+                return 0;
+            case "right":
+                return 2;
+            case "down":
+                return 4;
+            case "left":
+                return 6;
+            default:
+                return 8;
+        }
     }
 }

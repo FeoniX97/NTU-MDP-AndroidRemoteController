@@ -146,64 +146,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mStart.setOnClickListener(view -> {
-            List<ObstacleView> listObstacle = mArenaView.getObstacles();
-            Algo algo = Algo.setObstacleSize(listObstacle.size());
-
-            Log.e("algo", "algo set obstacle size: " + listObstacle.size());
-
-            for (ObstacleView obstacle : listObstacle) {
-                Log.e("algo", "adding obstacle to algo: " + obstacle);
-                algo.addObstacle(obstacle.getAxisFromIdx(), obstacle.getImageDirStr(), obstacle.getId());
-            }
-
-            JSONObject pathObj;
-            JSONArray pathArr;
-            try {
-                pathObj = algo.buildPath();
-                Log.e("algo", "path: " + pathObj);
-                pathArr = pathObj.getJSONArray("path");
-            } catch (JSONException e) {
-                throw new RuntimeException(e);
-            }
-
-            // send path to robot
-            sendMessageToAMD(pathObj.toString());
-
-            Log.e("algo", "path size: " + pathArr.length());
-
-            // move robot
-            Handler moveDelayHandler = new Handler();
-            Runnable moveDelayTimer = new Runnable() {
-                private int idx = 0;
-
-                @Override
-                public void run() {
-                    JSONObject obj;
-                    try {
-                        obj = pathArr.getJSONObject(idx);
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
-
-                    Log.e("algo", "robot status: " + obj);
-
-                    // move robot
-                    Point idxPoint;
-                    try {
-                        idxPoint = mArenaView.getIdxFromAxis(new Point(obj.getInt("x"), obj.getInt("y")));
-                        mArenaView.updateRobotPosition(idxPoint.x, idxPoint.y, mArenaView.getIntFromDirStr(obj.getString("dir")));
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
-
-                    if (idx < pathArr.length() - 1) {
-                        moveDelayHandler.postDelayed(this, 100);
-                        idx++;
-                    }
-                }
-            };
-
-            moveDelayHandler.postDelayed(moveDelayTimer, 250);
+            this.mArenaView.calculatePathFromApi();
         });
 
         mHandler = new Handler(Looper.getMainLooper()) {
@@ -334,8 +277,8 @@ public class MainActivity extends AppCompatActivity {
             case R.id.direct_connect:
                 // direct connect to device using shared pref
                 String deviceName = getStoredDeviceName();
-                // String deviceAddr = getStoredDeviceAddr();
-                String deviceAddr = "DC:A6:32:E2:DC:AC";
+                String deviceAddr = getStoredDeviceAddr();
+                // String deviceAddr = "DC:A6:32:E2:DC:AC";
                 Log.e(TAG, "trying direct connect, device name: " + deviceName + ", device addr: " + deviceAddr);
                 connectSavedDevice(deviceName, deviceAddr);
                 return true;
