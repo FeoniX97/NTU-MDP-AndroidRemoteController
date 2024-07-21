@@ -1,0 +1,94 @@
+// v1.2: changed field "dir" to "d"
+// v1.3: changed field "scan" to "s"
+
+{
+  // "bt": robot -> app, send when initial BT connected
+  // for future direct connection
+  "bt": {
+
+    // optional
+    "name": "str",
+
+    // BT hardware address
+    "addr": "str"
+  },
+
+  // "status": robot -> app, the status of the robot, custom message, for c4
+  "status": "str",
+
+  // "robot": robot -> app, send whenever robot location/direction updated
+  "robot": {
+
+    // the current x coordinate of the robot on map
+    "x": 0,
+
+    // the current y coordinate of the robot on map
+    "y": 0,
+
+    // the direction of robot is facing: "up", "down", "left", "right"
+    // v1.2: changed field "dir" to "d"
+    "d": "up"
+  },
+
+  // "obstacle": robot -> app
+  // robot send to app whenever an obstacle image is detected
+  "obstacle": {
+    
+    // id of the obstacle(start with 0), increment whenever a new obstacle is placed into the map
+    "id": 0,
+
+    // the current x coordinate of the obstacle on map
+    "x": 0,
+
+    // the current y coordinate of the obstacle on map
+    "y": 0,
+
+    // image attaching to the obstacle
+    "image": {
+
+      // id of the image(start with 0), pre-defined for each unique image
+      "id": 0,
+
+      // the direction of image is facing on the obstacle: "up", "down", "left", "right"
+      // v1.2: changed field "dir" to "d"
+      "d": "up"
+    }
+  },
+
+  // "move": app -> robot, instruct the robot to move: "f"orward, "b"ackward, "l"eft, "r"ight
+  // send when the app movement buttons are pressed
+  "move": "f",
+
+  // "path": app -> robot, a full algo path send to robot for its automatic movement
+  // send when the app placed all obstacles, with each direction defined, and press "Start" button
+  "path": [
+
+    // 1st step
+    {
+      "x": 0,
+      "y": 0,
+      // v1.2: changed field "dir" to "d"
+      "d": "up"
+    },
+
+    // 2nd step
+    {
+      "x": 1,
+      "y": 2,
+      "d": "down",
+      // perform scan on the obstacleId, to pass back to app in the "obstacle" field
+      // v1.3: changed field "scan" to "s"
+      "s": 1
+    },
+    
+    // 3rd step
+    {
+      "x": 4,
+      "y": 3,
+      "d": "up",
+      // perform scan on the obstacleId, to pass back to app in the "obstacle" field
+      "s": 2
+    }
+    // etc...
+  ]
+}

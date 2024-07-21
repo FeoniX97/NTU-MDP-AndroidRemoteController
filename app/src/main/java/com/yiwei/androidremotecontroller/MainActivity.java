@@ -1,13 +1,16 @@
 package com.yiwei.androidremotecontroller;
 
 import android.Manifest;
+import android.app.AlarmManager;
 import android.app.Dialog;
+import android.app.PendingIntent;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -19,6 +22,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.text.InputType;
 import android.util.Log;
@@ -62,6 +66,10 @@ public class MainActivity extends AppCompatActivity {
     private final static int REQUEST_ENABLE_BT = 1; // used to identify adding bluetooth names
     public final static int MESSAGE_READ = 2; // used in bluetooth handler to identify message update
     private final static int CONNECTING_STATUS = 3; // used in bluetooth handler to identify message status
+
+    public enum AlgoType {
+        SQ, EX
+    }
 
     // GUI Components
     private TextView mBluetoothStatus;
@@ -146,7 +154,10 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mStart.setOnClickListener(view -> {
-            this.mArenaView.calculatePathFromApi();
+            if (getCurrentAlgoType().equals(AlgoType.SQ.name()))
+                this.mArenaView.calculatePathFromInternal();
+            else if (getCurrentAlgoType().equals(AlgoType.EX.name()))
+                this.mArenaView.calculatePathFromApi();
         });
 
         mHandler = new Handler(Looper.getMainLooper()) {
@@ -233,6 +244,10 @@ public class MainActivity extends AppCompatActivity {
 
         setupDragListener();
 
+        String algoType = getCurrentAlgoType();
+        if (getSupportActionBar() != null && getSupportActionBar().getTitle() != null)
+            getSupportActionBar().setTitle(getSupportActionBar().getTitle() + " (Algo" + algoType + ")");
+
 //        IntentFilter filter = new IntentFilter();
 //        filter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
 //        filter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED);
@@ -266,6 +281,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        AlertDialog.Builder builder;
+
         // Handle item selection.
         switch (item.getItemId()) {
             case R.id.bluetooth_on:
@@ -274,13 +291,38 @@ public class MainActivity extends AppCompatActivity {
             case R.id.bluetooth_off:
                 bluetoothOff();
                 return true;
-            case R.id.direct_connect:
-                // direct connect to device using shared pref
+            case R.id.reconnect:
+                if (getStoredDeviceAddr().isEmpty() || getStoredDeviceAddr() == null) {
+                    Toast.makeText(this, "No previously connected device", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+
+                // reconnect to previous device using shared pref
                 String deviceName = getStoredDeviceName();
                 String deviceAddr = getStoredDeviceAddr();
-                // String deviceAddr = "DC:A6:32:E2:DC:AC";
                 Log.e(TAG, "trying direct connect, device name: " + deviceName + ", device addr: " + deviceAddr);
                 connectSavedDevice(deviceName, deviceAddr);
+                return true;
+            case R.id.direct_connect:
+                builder = new AlertDialog.Builder(this);
+                builder.setTitle("Bluetooth Direct Connect, Enter device BT address");
+
+                // Set up the input
+                final EditText input = new EditText(this);
+                input.setText(getStoredDeviceAddr());
+                builder.setView(input);
+
+                // Set up the buttons
+                builder.setPositiveButton("OK", (dialog, which) -> {
+                    String addr = input.getText().toString();
+                    // save the BT addr
+                    storeConnectedDeviceInfo("", addr);
+                    Log.e(TAG, "trying direct connect, device addr: " + addr);
+                    connectSavedDevice("", addr);
+                });
+                builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+
+                builder.show();
                 return true;
             case R.id.connect:
                 discover();
@@ -288,9 +330,31 @@ public class MainActivity extends AppCompatActivity {
             case R.id.reset_arena:
                 mArenaView.reset();
                 return true;
-//            case R.id.disconnect:
-//                listPairedDevices();
-//                return true;
+            case R.id.algo_sq:
+                switchAlgo(AlgoType.SQ);
+                return true;
+            case R.id.algo_ex:
+                switchAlgo(AlgoType.EX);
+                return true;
+            case R.id.algo_ex_ip:
+                builder = new AlertDialog.Builder(this);
+                builder.setTitle("Configure AlgoEX Server IP (with port)");
+
+                // Set up the input
+                final EditText input2 = new EditText(this);
+                input2.setText(getAlgoEXServerIP());
+                builder.setView(input2);
+
+                // Set up the buttons
+                builder.setPositiveButton("OK", (dialog, which) -> {
+                    String ip = input2.getText().toString();
+                    // save the ip (with port)
+                    saveAlgoEXServerIP(ip);
+                });
+                builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+
+                builder.show();
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -450,12 +514,6 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private void connectSavedDevice(String name, String address) {
-        if (name == null || address == null) {
-            Log.e(TAG, "device name or address is null, direct connect using default value");
-            name = "DESKTOP-0RLC4T3";
-            address = "48:89:E7:C8:BB:E8";
-        }
-
         if (mBTAdapter.isEnabled()) {
             BluetoothDevice device = mBTAdapter.getRemoteDevice(address);
 
@@ -574,7 +632,17 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void storeConnectedDeviceInfo(String name, String addr) {
+    private void switchAlgo(AlgoType algoType) {
+        SharedPreferences sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE);
+        SharedPreferences.Editor myEdit = sharedPreferences.edit();
+        myEdit.putString("algo_type", algoType.name());
+        myEdit.apply();
+
+        // restart app manually
+        Toast.makeText(getApplicationContext(), "Relaunch app to switch algo type!", Toast.LENGTH_SHORT).show();
+    }
+
+    public void storeConnectedDeviceInfo(String name, String addr) {
         // Storing data into SharedPreferences
         SharedPreferences sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE);
 
@@ -604,5 +672,23 @@ public class MainActivity extends AppCompatActivity {
 
         // We can then use the data
         return sh.getString("device_addr", "");
+    }
+
+    private String getCurrentAlgoType() {
+        SharedPreferences sh = getSharedPreferences("MySharedPref", MODE_PRIVATE);
+        return sh.getString("algo_type", MainActivity.AlgoType.EX.name());
+    }
+
+    private void saveAlgoEXServerIP(String ip) {
+        SharedPreferences sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE);
+        SharedPreferences.Editor myEdit = sharedPreferences.edit();
+        myEdit.putString("server_ip", ip);
+
+        myEdit.apply();
+    }
+
+    public String getAlgoEXServerIP() {
+        SharedPreferences sh = getSharedPreferences("MySharedPref", MODE_PRIVATE);
+        return sh.getString("server_ip", "http://192.168.1.142:5000/path");
     }
 }

@@ -99,9 +99,10 @@ public class Algo {
             // Log.e("algo","Turn to " + getDirectionName(newDirection) + " direction");
             robotDirection = newDirection;
             JSONObject jsonObj = new JSONObject();
+            jsonObj.put("d", newDirection);
+            jsonObj.put("s", -1);
             jsonObj.put("x", robotX);
             jsonObj.put("y", robotY);
-            jsonObj.put("dir", newDirection);
             pathArr.put(jsonObj);
         }
 
@@ -137,10 +138,10 @@ public class Algo {
                 robotDirection = getOppositeDirection(targetDirection);
 
                 JSONObject jsonObj = new JSONObject();
+                jsonObj.put("d", robotDirection);
+                jsonObj.put("s", targetId);
                 jsonObj.put("x", robotX);
                 jsonObj.put("y", robotY);
-                jsonObj.put("dir", robotDirection);
-                jsonObj.put("scan", targetId);
                 pathArr.put(jsonObj);
 
                 // Log.e("algo","Turn to" + getDirectionName(robotDirection) + " direction");
@@ -153,9 +154,10 @@ public class Algo {
         }
 
         JSONObject jsonObj = new JSONObject();
+        jsonObj.put("d", robotDirection);
+        jsonObj.put("s", -1);
         jsonObj.put("x", robotX);
         jsonObj.put("y", robotY);
-        jsonObj.put("dir", robotDirection);
         pathArr.put(jsonObj);
         // Log.e("algo","current robot at :  (" + robotX + ", " + robotY + ")");
     }

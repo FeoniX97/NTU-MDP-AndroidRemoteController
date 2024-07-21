@@ -10,8 +10,20 @@
         android:id="@+id/connect"
         android:title="Connect" />
     <item
-        android:id="@+id/direct_connect"
+        android:id="@+id/reconnect"
         android:title="Reconnect" />
+    <item
+        android:id="@+id/direct_connect"
+        android:title="Direct Connect" />
+    <item
+        android:id="@+id/algo_sq"
+        android:title="Use AlgoSQ" />
+    <item
+        android:id="@+id/algo_ex"
+        android:title="Use AlgoEX" />
+    <item
+        android:id="@+id/algo_ex_ip"
+        android:title="AlgoEX Server IP" />
     <item
         android:id="@+id/reset_arena"
         android:title="Reset Arena" />

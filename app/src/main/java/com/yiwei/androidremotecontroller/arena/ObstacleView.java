@@ -1,5 +1,9 @@
 package com.yiwei.androidremotecontroller.arena;
 
+import static com.yiwei.androidremotecontroller.arena.ArenaView.MARGIN;
+import static com.yiwei.androidremotecontroller.arena.ArenaView.OBSTACLE_SIZE;
+import static com.yiwei.androidremotecontroller.arena.ArenaView.TILE_SIZE;
+
 import android.content.ClipData;
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -10,6 +14,7 @@ import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.support.annotation.Nullable;
+import android.support.v7.widget.AppCompatImageView;
 import android.support.v7.widget.PopupMenu;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -18,7 +23,7 @@ import android.view.View;
 import com.yiwei.androidremotecontroller.MainActivity;
 import com.yiwei.androidremotecontroller.R;
 
-public class ObstacleView extends View {
+public class ObstacleView extends AppCompatImageView {
 
     private static final char IMAGE_DIR_NORTH = 'n';
     private static final char IMAGE_DIR_WEST = 'w';
@@ -158,8 +163,6 @@ public class ObstacleView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-
         canvas.drawRect(mRect, mBlackPaintBrushFill);
 
         if (!isLegend()) {
@@ -170,6 +173,11 @@ public class ObstacleView extends View {
             } else {
                 // draw bold targetId
                 canvas.drawText(String.valueOf(this.getImageTargetId()), (float) this.size / 2 - 9 - (this.getImageTargetId() > 9 ? 8 : 0), (float) this.size / 2 + 6, this.mWhitePaintBrushFillBold);
+            }
+
+            if (this.getImageTargetId() > -1) {
+                Log.e("ObstacleView", "drawing detected image");
+                super.onDraw(canvas);
             }
 
             // draw image direction border if exists
@@ -311,6 +319,23 @@ public class ObstacleView extends View {
         return "null";
     }
 
+    public void setImageDirFromStr(String dirStr) {
+        switch (dirStr) {
+            case "up":
+                setImageDir('n');
+                break;
+            case "right":
+                setImageDir('e');
+                break;
+            case "down":
+                setImageDir('s');
+                break;
+            case "left":
+                setImageDir('w');
+                break;
+        }
+    }
+
     public void setImageDir(char mImageDir) {
         mImageDir = Character.toLowerCase(mImageDir);
 
@@ -339,6 +364,13 @@ public class ObstacleView extends View {
         }
 
         this.mImageTargetId = mImageTargetId;
+
+        // retrieve image by id
+        if (mImageTargetId > -1) {
+            int resId = getResources().getIdentifier("s" + this.getImageTargetId(), "drawable", getContext().getPackageName());
+            Log.e("ObstacleView", "image detected! id: " + this.getImageTargetId() + ", resId: " + resId);
+            setImageResource(resId);
+        }
 
         // redraw the obstacle
         invalidate();
