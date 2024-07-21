@@ -77,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText mDirection;
     private EditText mMessage;
     private EditText mObsCoord;
+    private EditText mLog;
     private Button mSendMsg;
     private Button mAddObs;
     private Button mStart;
@@ -109,6 +110,7 @@ public class MainActivity extends AppCompatActivity {
         mAddObs = (Button) findViewById(R.id.btn_add_obs);
         mStart = (Button) findViewById(R.id.btn_start);
         mArenaView = (ArenaView) findViewById(R.id.arena_view);
+        mLog = (EditText) findViewById(R.id.tb_log);
 
         if (mArenaView != null) {
             mArenaView.mainActivity = this;
@@ -332,7 +334,8 @@ public class MainActivity extends AppCompatActivity {
             case R.id.direct_connect:
                 // direct connect to device using shared pref
                 String deviceName = getStoredDeviceName();
-                String deviceAddr = getStoredDeviceAddr();
+                // String deviceAddr = getStoredDeviceAddr();
+                String deviceAddr = "DC:A6:32:E2:DC:AC";
                 Log.e(TAG, "trying direct connect, device name: " + deviceName + ", device addr: " + deviceAddr);
                 connectSavedDevice(deviceName, deviceAddr);
                 return true;
@@ -518,35 +521,44 @@ public class MainActivity extends AppCompatActivity {
             boolean fail = false;
 
             try {
+                mLog.setText(mLog.getText() + "\nConnecting to: " + address);
                 socket = device.createRfcommSocketToServiceRecord(BT_MODULE_UUID);
             } catch (Exception e) {
                 Log.e("","Error creating socket");
+                mLog.setText(mLog.getText() + "\nError creating socket");
                 Toast.makeText(getBaseContext(), getString(R.string.ErrSockCrea), Toast.LENGTH_SHORT).show();
             }
 
             try {
                 socket.connect();
                 Log.e("","Connected");
+                mLog.setText(mLog.getText() + "\nConnected");
             } catch (IOException e) {
-                Log.e("",e.getMessage());
+                Log.e("", e.getMessage());
+                mLog.setText(mLog.getText() + "\n" + e.getMessage());
                 try {
                     Log.e("","trying fallback...");
+                    mLog.setText(mLog.getText() + "\ntrying fallback...");
 
                     socket =(BluetoothSocket) device.getClass().getMethod("createRfcommSocket", new Class[] {int.class}).invoke(device,1);
                     socket.connect();
 
                     Log.e("","Connected");
+                    mLog.setText(mLog.getText() + "\nConnected");
                 }
                 catch (Exception e2) {
                     Log.e("", "Couldn't establish Bluetooth connection!");
+                    mLog.setText(mLog.getText() + "\nCouldn't establish Bluetooth connection!");
                     try {
                         fail = true;
-                        Log.e(TAG, e.getMessage());
+                        Log.e(TAG, e2.getMessage());
+                        mLog.setText(mLog.getText() + "\n" + e2.getMessage());
                         socket.close();
                         mHandler.obtainMessage(CONNECTING_STATUS, -1, -1)
                                 .sendToTarget();
                     } catch (IOException e3) {
                         //insert code to deal with this
+                        mLog.setText(mLog.getText() + "\n" + e3.getMessage());
                         Toast.makeText(getBaseContext(), getString(R.string.ErrSockCrea), Toast.LENGTH_SHORT).show();
                     }
                 }
