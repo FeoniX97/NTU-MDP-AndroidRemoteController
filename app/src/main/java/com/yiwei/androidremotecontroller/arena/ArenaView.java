@@ -27,13 +27,9 @@ import com.yiwei.androidremotecontroller.algo.ApiTask;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.w3c.dom.Text;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-import javax.xml.datatype.Duration;
 
 public class ArenaView extends RelativeLayout {
 
@@ -71,6 +67,7 @@ public class ArenaView extends RelativeLayout {
     public Handler timerHandler;
     private Runnable timerRunnable;
     private Runnable moveRobotRunnable;
+    private JSONArray calculatedPath;
 
     public ArenaView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -309,9 +306,7 @@ public class ArenaView extends RelativeLayout {
                 tile.getObstacle().setImageTargetId(imageId);
                 tile.getObstacle().setImageDirFromStr(imageDirStr);
             }
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
-        }
+        } catch (JSONException ignored) {}
 
         // BT
         JSONObject btObj;
@@ -335,14 +330,39 @@ public class ArenaView extends RelativeLayout {
             mainActivity.mReadBuffer.setText("Robot Connected. " + btStatus);
         }
 
+        // pathCompleted
+        boolean pathCompleted;
+        try {
+            pathCompleted = msgObj.getBoolean("pathCompleted");
+            if (pathCompleted) {
+                Toast.makeText(mainActivity, "Robot path completed, stopped timer", Toast.LENGTH_LONG).show();
+                // stop the timer
+                stopTimer();
+            }
+        } catch (JSONException ignored) {}
+
+        // currentPathIdx
+        int currentPathIdx;
+        try {
+            currentPathIdx = msgObj.getInt("currentPathIdx");
+            if (this.calculatedPath != null && currentPathIdx > -1 && currentPathIdx < this.calculatedPath.length()) {
+                JSONObject pathObj = this.calculatedPath.getJSONObject(currentPathIdx);
+                int x = pathObj.getInt("x");
+                int y = pathObj.getInt("y");
+                String d = pathObj.getString("d");
+                Point idxPoint = getIdxFromAxis(new Point(x, y));
+                updateRobotPosition(idxPoint.x, idxPoint.y, getDirIntFromStrForRobot(d));
+            }
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+
         // status
         String status;
         try {
             status = msgObj.getString("status");
             mainActivity.mReadBuffer.setText(status);
-        } catch (Exception e) {
-            Log.e("MainActivity", e.getMessage());
-        }
+        } catch (Exception ignored) {}
     }
 
     /** x&y are idx!!! */
@@ -672,11 +692,10 @@ public class ArenaView extends RelativeLayout {
         }
 
         JSONObject pathObj;
-        JSONArray pathArr;
         try {
             pathObj = algo.buildPath();
             Log.e("algo", "path: " + pathObj);
-            pathArr = pathObj.getJSONArray("path");
+            this.calculatedPath = pathObj.getJSONArray("path");
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
@@ -685,13 +704,13 @@ public class ArenaView extends RelativeLayout {
         this.mainActivity.sendMessageToAMD(pathObj.toString());
         Toast.makeText(mainActivity, "Using algoSQ, local calculated path sent to robot", Toast.LENGTH_SHORT).show();
 
-        Log.e("algo", "path size: " + pathArr.length());
+        Log.e("algo", "path size: " + this.calculatedPath.length());
 
         startTimer();
 
         // move robot for simulation
         if (this.mainActivity.cbSimulation.isChecked())
-            moveRobotFromPath(pathArr, 100);
+            moveRobotFromPath(this.calculatedPath, 100);
     }
 
     public void calculatePathFromApi() {
@@ -733,11 +752,10 @@ public class ArenaView extends RelativeLayout {
 
     public void onApiResult(JSONObject result) {
         // convert field "d" value from dirStr to dirInt
-        JSONArray pathObjArr;
         try {
-            pathObjArr = result.getJSONArray("path");
-            for (int i = 0; i < pathObjArr.length(); i++) {
-                JSONObject pathObj = pathObjArr.getJSONObject(i);
+            this.calculatedPath = result.getJSONArray("path");
+            for (int i = 0; i < this.calculatedPath.length(); i++) {
+                JSONObject pathObj = this.calculatedPath.getJSONObject(i);
                 pathObj.put("d", getDirStrFromIntForApi(pathObj.getInt("d")));
             }
         } catch (JSONException e) {
@@ -747,7 +765,7 @@ public class ArenaView extends RelativeLayout {
         // send path to robot
         JSONObject transferObj = new JSONObject();
         try {
-            transferObj.put("path", pathObjArr);
+            transferObj.put("path", this.calculatedPath);
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
@@ -758,7 +776,7 @@ public class ArenaView extends RelativeLayout {
         startTimer();
 
         if (this.mainActivity.cbSimulation.isChecked())
-            moveRobotFromPath(pathObjArr, 1000);
+            moveRobotFromPath(this.calculatedPath, 1000);
     }
 
     private void startTimer() {
@@ -822,6 +840,10 @@ public class ArenaView extends RelativeLayout {
                     if (moveRobotHandler != null)
                         moveRobotHandler.postDelayed(this, delayPerStep);
                     idx++;
+                } else {
+                    Toast.makeText(mainActivity, "Simulation path completed, stopped timer", Toast.LENGTH_LONG).show();
+                    // stop the timer
+                    stopTimer();
                 }
             }
         };
@@ -831,6 +853,36 @@ public class ArenaView extends RelativeLayout {
     }
 
     private int getDirIntFromStrForApi(String dirStr) {
+        switch (dirStr) {
+            case "up":
+                return 0;
+            case "right":
+                return 2;
+            case "down":
+                return 4;
+            case "left":
+                return 6;
+            default:
+                return 8;
+        }
+    }
+
+    private int getDirIntFromStrForRobot(String dirStr) {
+        switch (dirStr) {
+            case "up":
+                return 0;
+            case "right":
+                return 90;
+            case "down":
+                return 180;
+            case "left":
+                return 270;
+            default:
+                return -1;
+        }
+    }
+
+    private int getDirIntFromIntForApi(String dirStr) {
         switch (dirStr) {
             case "up":
                 return 0;
@@ -863,5 +915,17 @@ public class ArenaView extends RelativeLayout {
     private String getCurrentAlgoType() {
         SharedPreferences sh = this.mainActivity.getSharedPreferences("MySharedPref", MODE_PRIVATE);
         return sh.getString("algo_type", MainActivity.AlgoType.EX.name());
+    }
+
+    public boolean isAllObsSideSet() {
+        List<ObstacleView> listObstacle = getObstacles();
+        for (int i = 0; i < listObstacle.size(); i++) {
+            ObstacleView obs = listObstacle.get(i);
+            if (obs != null && obs.getImageDir() == 'x') {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

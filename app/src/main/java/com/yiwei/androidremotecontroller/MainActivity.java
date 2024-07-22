@@ -158,6 +158,12 @@ public class MainActivity extends AppCompatActivity {
 
         mStart.setOnClickListener(view -> {
             if (this.mArenaView.timerHandler == null) {
+                // make sure all obs sides are set
+                if (!this.mArenaView.isAllObsSideSet()) {
+                    Toast.makeText(this, "Make sure all obstacle sides are set!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
                 // start the calculation and timer
                 if (getCurrentAlgoType().equals(AlgoType.SQ.name()))
                     this.mArenaView.calculatePathFromInternal();

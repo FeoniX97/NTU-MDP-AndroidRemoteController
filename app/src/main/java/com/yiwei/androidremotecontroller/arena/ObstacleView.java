@@ -75,7 +75,7 @@ public class ObstacleView extends AppCompatImageView {
         TypedArray attrArr = context.obtainStyledAttributes(attrs, R.styleable.ObstacleView);
 
         isLegend = attrArr.getBoolean(R.styleable.ObstacleView_isLegend, true);
-        size = attrArr.getInt(R.styleable.ObstacleView_size, 25);
+        size = attrArr.getInt(R.styleable.ObstacleView_size, 50);
 
         attrArr.recycle();
 
