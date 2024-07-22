@@ -35,6 +35,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -88,7 +89,8 @@ public class MainActivity extends AppCompatActivity {
     private EditText mLog;
     private Button mSendMsg;
     private Button mAddObs;
-    private Button mStart;
+    public Button mStart;
+    public CheckBox cbSimulation;
     public ArenaView mArenaView;
 
     private BluetoothAdapter mBTAdapter;
@@ -117,6 +119,7 @@ public class MainActivity extends AppCompatActivity {
         //mSendMsg = (Button) findViewById(R.id.btn_add_obs);
         mAddObs = (Button) findViewById(R.id.btn_add_obs);
         mStart = (Button) findViewById(R.id.btn_start);
+        cbSimulation = (CheckBox) findViewById(R.id.cb_simulation) ;
         mArenaView = (ArenaView) findViewById(R.id.arena_view);
         mLog = (EditText) findViewById(R.id.tb_log);
 
@@ -154,10 +157,18 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mStart.setOnClickListener(view -> {
-            if (getCurrentAlgoType().equals(AlgoType.SQ.name()))
-                this.mArenaView.calculatePathFromInternal();
-            else if (getCurrentAlgoType().equals(AlgoType.EX.name()))
-                this.mArenaView.calculatePathFromApi();
+            if (this.mArenaView.timerHandler == null) {
+                // start the calculation and timer
+                if (getCurrentAlgoType().equals(AlgoType.SQ.name()))
+                    this.mArenaView.calculatePathFromInternal();
+                else if (getCurrentAlgoType().equals(AlgoType.EX.name()))
+                    this.mArenaView.calculatePathFromApi();
+                Log.e("MainActivity", "starting timer");
+            } else {
+                // stop the timer
+                Log.e("MainActivity", "stopping timer");
+                this.mArenaView.stopTimer();
+            }
         });
 
         mHandler = new Handler(Looper.getMainLooper()) {

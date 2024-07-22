@@ -16,6 +16,7 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.widget.EditText;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.yiwei.androidremotecontroller.MainActivity;
@@ -26,9 +27,13 @@ import com.yiwei.androidremotecontroller.algo.ApiTask;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.w3c.dom.Text;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import javax.xml.datatype.Duration;
 
 public class ArenaView extends RelativeLayout {
 
@@ -61,6 +66,11 @@ public class ArenaView extends RelativeLayout {
 
     public MainActivity mainActivity;
     private ApiTask apiTask;
+
+    public Handler moveRobotHandler;
+    public Handler timerHandler;
+    private Runnable timerRunnable;
+    private Runnable moveRobotRunnable;
 
     public ArenaView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -664,7 +674,6 @@ public class ArenaView extends RelativeLayout {
         JSONObject pathObj;
         JSONArray pathArr;
         try {
-            Toast.makeText(mainActivity, "Using algoSQ, start local calculation ...", Toast.LENGTH_SHORT).show();
             pathObj = algo.buildPath();
             Log.e("algo", "path: " + pathObj);
             pathArr = pathObj.getJSONArray("path");
@@ -674,11 +683,15 @@ public class ArenaView extends RelativeLayout {
 
         // send path to robot
         this.mainActivity.sendMessageToAMD(pathObj.toString());
+        Toast.makeText(mainActivity, "Using algoSQ, local calculated path sent to robot", Toast.LENGTH_SHORT).show();
 
         Log.e("algo", "path size: " + pathArr.length());
 
-        // move robot
-        moveRobotFromPath(pathArr, 100);
+        startTimer();
+
+        // move robot for simulation
+        if (this.mainActivity.cbSimulation.isChecked())
+            moveRobotFromPath(pathArr, 100);
     }
 
     public void calculatePathFromApi() {
@@ -731,8 +744,6 @@ public class ArenaView extends RelativeLayout {
             throw new RuntimeException(e);
         }
 
-        Toast.makeText(mainActivity, "Received calculated path from server", Toast.LENGTH_SHORT).show();
-
         // send path to robot
         JSONObject transferObj = new JSONObject();
         try {
@@ -740,14 +751,51 @@ public class ArenaView extends RelativeLayout {
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
-        this.mainActivity.sendMessageToAMD(transferObj.toString());
 
-        moveRobotFromPath(pathObjArr, 1000);
+        this.mainActivity.sendMessageToAMD(transferObj.toString());
+        Toast.makeText(mainActivity, "Sent calculated path from server to robot", Toast.LENGTH_SHORT).show();
+
+        startTimer();
+
+        if (this.mainActivity.cbSimulation.isChecked())
+            moveRobotFromPath(pathObjArr, 1000);
+    }
+
+    private void startTimer() {
+        this.mainActivity.mStart.setText("STOP");
+
+        this.timerRunnable = new Runnable() {
+            private long timerMs = 0;
+
+            @Override
+            public void run() {
+                TextView tvTimer = (TextView) ArenaView.this.mainActivity.findViewById(R.id.tv_timer);
+
+                long sec = timerMs / 1000;
+                long ms = timerMs % 1000;
+                long min = sec / 60;
+
+                tvTimer.setText(min + ":" + sec + ":" + ms);
+
+                timerMs += 100;
+
+                if (timerHandler != null)
+                    timerHandler.postDelayed(ArenaView.this.timerRunnable, 100);
+            }
+        };
+
+        this.timerHandler = new Handler();
+        timerHandler.postDelayed(this.timerRunnable, 100);
+    }
+
+    public void stopTimer() {
+        this.moveRobotHandler = null;
+        this.timerHandler = null;
+        this.mainActivity.mStart.setText("START");
     }
 
     private void moveRobotFromPath(JSONArray pathObjArr, int delayPerStep) {
-        Handler moveDelayHandler = new Handler();
-        Runnable moveDelayTimer = new Runnable() {
+        moveRobotRunnable = new Runnable() {
             private int idx = 0;
 
             @Override
@@ -771,13 +819,15 @@ public class ArenaView extends RelativeLayout {
                 }
 
                 if (idx < pathObjArr.length() - 1) {
-                    moveDelayHandler.postDelayed(this, delayPerStep);
+                    if (moveRobotHandler != null)
+                        moveRobotHandler.postDelayed(this, delayPerStep);
                     idx++;
                 }
             }
         };
 
-        moveDelayHandler.postDelayed(moveDelayTimer, 250);
+        moveRobotHandler = new Handler();
+        moveRobotHandler.postDelayed(moveRobotRunnable, delayPerStep);
     }
 
     private int getDirIntFromStrForApi(String dirStr) {
