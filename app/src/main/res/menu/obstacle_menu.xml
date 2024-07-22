@@ -7,6 +7,9 @@
         android:id="@+id/targetId"
         android:title="Target Id: " />
     <item
+        android:id="@+id/coord"
+        android:title="Coord: " />
+    <item
         android:id="@+id/top"
         android:title="Up" />
     <item

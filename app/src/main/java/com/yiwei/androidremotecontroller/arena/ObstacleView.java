@@ -31,11 +31,11 @@ public class ObstacleView extends AppCompatImageView {
     private static final char IMAGE_DIR_SOUTH = 's';
     private static final char IMAGE_DIR_NONE = 'x';
 
-    private final int id;
-    private final int coordX;
-    private final int coordY;
-    private final int idxX;
-    private final int idxY;
+    private int id;
+    private int coordX;
+    private int coordY;
+    private int idxX;
+    private int idxY;
     private final int size;
 
     // whether this obstacle is a legend outside the arena
@@ -200,6 +200,11 @@ public class ObstacleView extends AppCompatImageView {
         }
     }
 
+    public void onAxisChanged() {
+        // invalidate popup menu
+        setupPopupMenu();
+    }
+
     private void setupPopupMenu() {
         setOnClickListener(v -> {
             // Initializing the popup menu and giving the reference as current context
@@ -210,6 +215,9 @@ public class ObstacleView extends AppCompatImageView {
 
             popupMenu.getMenu().getItem(0).setTitle("Obstacle Id: " + this.getId());
             popupMenu.getMenu().getItem(1).setTitle("Target Id: " + this.getImageTargetId());
+
+            Point axisPoint = getAxisFromIdx();
+            popupMenu.getMenu().getItem(2).setTitle("x: " + axisPoint.x + ", y: " + axisPoint.y);
 
             popupMenu.setOnMenuItemClickListener(menuItem -> {
                 // Toast message on menu item clicked
@@ -351,6 +359,7 @@ public class ObstacleView extends AppCompatImageView {
 
         if (this.mainActivity != null) {
             this.mainActivity.sendMessageToAMD("{ \"faceObstacle:\" [" + this.getIdxX() + ", " + this.getIdxY() + ", " + mImageDir + ", " + this.getId() + "] }");
+            this.mainActivity.mArenaView.storeObstacles();
         }
     }
 
@@ -374,12 +383,32 @@ public class ObstacleView extends AppCompatImageView {
 
         // redraw the obstacle
         invalidate();
+
+        if (this.mainActivity != null) {
+            this.mainActivity.mArenaView.storeObstacles();
+        }
     }
 
     /** convert idx to axis on arena map */
     public Point getAxisFromIdx() {
         // return new Point(this.idxX + 1, ArenaView.ROWS - this.idxY);
         return new Point(this.idxX, ArenaView.ROWS - this.idxY - 1);
+    }
+
+    public void setCoordX(int coordX) {
+        this.coordX = coordX;
+    }
+
+    public void setCoordY(int coordY) {
+        this.coordY = coordY;
+    }
+
+    public void setIdxX(int idxX) {
+        this.idxX = idxX;
+    }
+
+    public void setIdxY(int idxY) {
+        this.idxY = idxY;
     }
 
     @Override
@@ -392,5 +421,14 @@ public class ObstacleView extends AppCompatImageView {
                 ", Y=" + axis.y +
                 ", imageDir=" + getImageDirStr() +
                 '}';
+    }
+
+    @Override
+    public void setId(int id) {
+        super.setId(id);
+
+        this.id = id;
+
+        invalidate();
     }
 }
