@@ -448,6 +448,9 @@ public class ArenaView extends RelativeLayout {
 
     /** x&y are idx!!! */
     public void updateRobotPosition(int x, int y, int dirInt) {
+        if (x < 0 || x >= COLS) return;
+        if (y < 0 || y >= ROWS) return;
+        
         if (mRobot == null || mRobot.getIdxX() != x || mRobot.getIdxY() != y) {
             Log.e("MainActivity", "new robot coord: " + x + ", " + y);
 
