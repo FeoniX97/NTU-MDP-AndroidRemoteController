@@ -27,7 +27,15 @@
     <item
         android:id="@+id/reset_arena"
         android:title="Reset Arena" />
-<!--    <item-->
-<!--        android:id="@+id/disconnect"-->
-<!--        android:title="Disconnect" />-->
+    <item
+        android:id="@+id/cb_bind_robot_to_image"
+        android:title="Bind robot to image"
+        android:checked="true"
+        android:checkable="true" />
+    <item
+        android:id="@+id/straight_distance_per_move"
+        android:title="Straight Distance Per Move" />
+    <item
+        android:id="@+id/turning_distance_per_move"
+        android:title="Turning Distance Per Move" />
 </menu>

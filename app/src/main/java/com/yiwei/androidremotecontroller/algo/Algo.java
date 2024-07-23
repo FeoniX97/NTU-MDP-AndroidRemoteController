@@ -78,16 +78,6 @@ public class Algo {
         return pathObj;
     }
 
-//    public Algo() {
-//        setFixedObstacles();
-//
-//        calculatePath();
-//
-//        for (; currentPathIndex < path.size() && currentTarget < OBSTACLE_COUNT; currentPathIndex++) {
-//            moveRobot();
-//        }
-//    }
-
     private void moveRobot() throws JSONException {
         JSONArray pathArr = pathObj.getJSONArray("path");
 

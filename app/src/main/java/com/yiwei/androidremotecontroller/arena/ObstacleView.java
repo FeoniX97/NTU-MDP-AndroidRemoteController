@@ -19,9 +19,12 @@ import android.support.v7.widget.PopupMenu;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
+import android.widget.Toast;
 
 import com.yiwei.androidremotecontroller.MainActivity;
 import com.yiwei.androidremotecontroller.R;
+
+import org.json.JSONObject;
 
 public class ObstacleView extends AppCompatImageView {
 
@@ -143,8 +146,8 @@ public class ObstacleView extends AppCompatImageView {
 
         mRectTopBorder.set(0, 0, size, 3);
         mRectLeftBorder.set(0, 0, 3, size);
-        mRectRightBorder.set(size - 6, 0, size, size);
-        mRectBottomBorder.set(0, size - 6, size, size);
+        mRectRightBorder.set(size - 5, 0, size, size);
+        mRectBottomBorder.set(0, size - 5, size, size);
 
         // create another set of thicker border rect
         mRectTopBorderThick = new Rect();
@@ -239,6 +242,15 @@ public class ObstacleView extends AppCompatImageView {
                         case R.id.clear:
                             // clear the image with the targetId
                             setImageDir(IMAGE_DIR_NONE);
+                            break;
+                        case R.id.instruct_snap:
+                            // instruct the robot to snap obstacleId image
+                            Toast.makeText(mainActivity, "Instructing robot to snap image for obstacle " + this.getId(), Toast.LENGTH_SHORT).show();
+                            JSONObject obj = new JSONObject();
+                            obj.put("snap", this.getId());
+                            this.mainActivity.sendMessageToAMD(obj.toString());
+                            break;
+                        case R.id.clear_image:
                             setImageTargetId(-1);
                             break;
                         case R.id.remove_obstacle:

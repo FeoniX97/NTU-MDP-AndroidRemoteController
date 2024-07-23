@@ -1,21 +1,17 @@
 package com.yiwei.androidremotecontroller;
 
 import android.Manifest;
-import android.app.AlarmManager;
 import android.app.Dialog;
-import android.app.PendingIntent;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Point;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -41,19 +37,15 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.yiwei.androidremotecontroller.algo.Algo;
 import com.yiwei.androidremotecontroller.arena.ArenaTileView;
 import com.yiwei.androidremotecontroller.arena.ArenaView;
-import com.yiwei.androidremotecontroller.arena.ObstacleView;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -100,6 +92,8 @@ public class MainActivity extends AppCompatActivity {
     private Handler mHandler; // Our main handler that will receive callback notifications
     private ConnectedThread mConnectedThread; // bluetooth background worker thread to send and receive data
     private BluetoothSocket mBTSocket = null; // bi-directional client-to-client data path
+
+    public Menu mainMenu;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -157,12 +151,14 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mStart.setOnClickListener(view -> {
-            if (this.mArenaView.timerHandler == null) {
+            if (this.mArenaView.timer == null) {
                 // make sure all obs sides are set
                 if (!this.mArenaView.isAllObsSideSet()) {
                     Toast.makeText(this, "Make sure all obstacle sides are set!", Toast.LENGTH_SHORT).show();
                     return;
                 }
+
+                mStart.setEnabled(false);
 
                 // start the calculation and timer
                 if (getCurrentAlgoType().equals(AlgoType.SQ.name()))
@@ -198,7 +194,13 @@ public class MainActivity extends AppCompatActivity {
                         mReadBuffer.setText("BT connected");
 
                         // send connected message to AMD
-                        sendMessageToAMD("BT connected");
+                        JSONObject obj = new JSONObject();
+                        JSONObject obj2 = new JSONObject();
+                        try {
+                            obj2.put("status", "BT connected");
+                            obj.put("bt", obj2);
+                            sendMessageToAMD(obj.toString());
+                        } catch (JSONException ignored) {}
                     } else
                         mBluetoothStatus.setText(getString(R.string.BTconnFail));
                 }
@@ -211,51 +213,47 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(getApplicationContext(),getString(R.string.sBTdevNF),Toast.LENGTH_SHORT).show();
         } else {
             mForward.setOnClickListener(view -> {
-                if(mConnectedThread != null) {
-                    JSONObject obj = new JSONObject();
-                    try {
-                        obj.put("move", "f");
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
-                    sendMessageToAMD(obj.toString());
+                JSONObject obj = new JSONObject();
+                try {
+                    obj.put("move", "f");
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
                 }
+                sendMessageToAMD(obj.toString());
+                this.mArenaView.moveRobotForward();
             });
 
             mReverse.setOnClickListener(view -> {
-                if(mConnectedThread != null) {
-                    JSONObject obj = new JSONObject();
-                    try {
-                        obj.put("move", "b");
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
-                    sendMessageToAMD(obj.toString());
+                JSONObject obj = new JSONObject();
+                try {
+                    obj.put("move", "b");
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
                 }
+                sendMessageToAMD(obj.toString());
+                this.mArenaView.moveRobotBackward();
             });
 
             mTurnLeft.setOnClickListener(view -> {
-                if(mConnectedThread != null) {
-                    JSONObject obj = new JSONObject();
-                    try {
-                        obj.put("move", "l");
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
-                    sendMessageToAMD(obj.toString());
+                JSONObject obj = new JSONObject();
+                try {
+                    obj.put("move", "l");
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
                 }
+                sendMessageToAMD(obj.toString());
+                this.mArenaView.moveRobotLeft();
             });
 
             mTurnRight.setOnClickListener(view -> {
-                if(mConnectedThread != null) {
-                    JSONObject obj = new JSONObject();
-                    try {
-                        obj.put("move", "r");
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
-                    sendMessageToAMD(obj.toString());
+                JSONObject obj = new JSONObject();
+                try {
+                    obj.put("move", "r");
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
                 }
+                sendMessageToAMD(obj.toString());
+                this.mArenaView.moveRobotRight();
             });
         }
 
@@ -293,6 +291,11 @@ public class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.main_menu, menu);
+
+        this.mainMenu = menu;
+
+        menu.getItem(9).setChecked(isRobotBindToImage());
+
         return true;
     }
 
@@ -367,6 +370,57 @@ public class MainActivity extends AppCompatActivity {
                     String ip = input2.getText().toString();
                     // save the ip (with port)
                     saveAlgoEXServerIP(ip);
+                });
+                builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+
+                builder.show();
+                return true;
+            case R.id.cb_bind_robot_to_image:
+                setRobotBindToImage(!item.isChecked());
+                item.setChecked(!item.isChecked());
+
+                return true;
+            case R.id.straight_distance_per_move:
+                builder = new AlertDialog.Builder(this);
+                builder.setTitle("Set the straight(forward/backward) distance(axis) per move for manual robot movement");
+
+                // Set up the input
+                final EditText input3 = new EditText(this);
+                input3.setText(getRobotStraightDistancePerMove() + "");
+                input3.setInputType(InputType.TYPE_CLASS_NUMBER);
+                builder.setView(input3);
+
+                // Set up the buttons
+                builder.setPositiveButton("OK", (dialog, which) -> {
+                    String distance = input3.getText().toString();
+                    int distanceInt = Integer.parseInt(distance);
+                    if (distanceInt < 1) {
+                        Toast.makeText(this, "Invalid distance!", Toast.LENGTH_SHORT).show();
+                    } else {
+                        // save the distance
+                        setRobotStraightDistancePerMove(distanceInt);
+                    }
+                });
+                builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+
+                builder.show();
+                return true;
+            case R.id.turning_distance_per_move:
+                builder = new AlertDialog.Builder(this);
+                builder.setTitle("Set the turning(left/right) distance(axis)/offset per move for manual robot movement: (side offset,vertical offset)");
+
+                // Set up the input
+                final EditText input4 = new EditText(this);
+                input4.setText(getRobotTurningDistancePerMove() + "");
+                builder.setView(input4);
+
+                // Set up the buttons
+                builder.setPositiveButton("OK", (dialog, which) -> {
+                    String distance = input4.getText().toString();
+                    int x = Integer.parseInt(distance.split(",")[0]);
+                    int y = Integer.parseInt(distance.split(",")[1]);
+                    // save the distance
+                    setRobotTurningDistancePerMove(x, y);
                 });
                 builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
 
@@ -707,5 +761,51 @@ public class MainActivity extends AppCompatActivity {
     public String getAlgoEXServerIP() {
         SharedPreferences sh = getSharedPreferences("MySharedPref", MODE_PRIVATE);
         return sh.getString("server_ip", "http://192.168.1.142:5000/path");
+    }
+
+    public void setRobotBindToImage(boolean flag) {
+        SharedPreferences sh = getSharedPreferences("MySharedPref", MODE_PRIVATE);
+        SharedPreferences.Editor myEdit = sh.edit();
+
+        myEdit.putBoolean("robot_bind_to_image", flag);
+
+        myEdit.apply();
+    }
+
+    public boolean isRobotBindToImage() {
+        SharedPreferences sh = getSharedPreferences("MySharedPref", MODE_PRIVATE);
+
+        return sh.getBoolean("robot_bind_to_image", true);
+    }
+
+    /** get the robot distance per move on arena grid, default to 1 */
+    public int getRobotStraightDistancePerMove() {
+        SharedPreferences sh = getSharedPreferences("MySharedPref", MODE_PRIVATE);
+
+        return sh.getInt("straight_distance_per_move", 1);
+    }
+
+    public void setRobotStraightDistancePerMove(int distance) {
+        SharedPreferences sh = getSharedPreferences("MySharedPref", MODE_PRIVATE);
+        SharedPreferences.Editor myEdit = sh.edit();
+
+        myEdit.putInt("straight_distance_per_move", distance);
+
+        myEdit.apply();
+    }
+
+    public String getRobotTurningDistancePerMove() {
+        SharedPreferences sh = getSharedPreferences("MySharedPref", MODE_PRIVATE);
+
+        return sh.getString("turning_distance_per_move", "3,1");
+    }
+
+    public void setRobotTurningDistancePerMove(int xOffset, int yOffset) {
+        SharedPreferences sh = getSharedPreferences("MySharedPref", MODE_PRIVATE);
+        SharedPreferences.Editor myEdit = sh.edit();
+
+        myEdit.putString("straight_distance_per_move", xOffset + "," + yOffset);
+
+        myEdit.apply();
     }
 }

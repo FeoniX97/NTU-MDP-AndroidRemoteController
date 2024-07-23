@@ -22,8 +22,14 @@
         android:id="@+id/bottom"
         android:title="Down" />
     <item
+        android:id="@+id/instruct_snap"
+        android:title="Take Snapshot" />
+    <item
         android:id="@+id/clear"
         android:title="Clear Direction" />
+    <item
+        android:id="@+id/clear_image"
+        android:title="Clear Image" />
     <item
         android:id="@+id/remove_obstacle"
         android:title="Remove Obstacle" />

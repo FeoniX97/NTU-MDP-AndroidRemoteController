@@ -10,10 +10,12 @@ import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -64,13 +66,15 @@ public class ArenaView extends RelativeLayout {
     private int obstacleSpawned = 0;
 
     public MainActivity mainActivity;
+    public ArenaPathLineView arenaPathLineView;
     private ApiTask apiTask;
 
     public Handler moveRobotHandler;
     public Handler timerHandler;
     private Runnable timerRunnable;
+    public CountUpTimer timer;
     private Runnable moveRobotRunnable;
-    private JSONArray calculatedPath;
+    public JSONArray calculatedPath;
 
     public ArenaView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -149,21 +153,30 @@ public class ArenaView extends RelativeLayout {
             mCoordsY[m] = new Point(MARGIN, m * TILE_SIZE + (MARGIN + TILE_SIZE / 2 + 2));
         }
 
+        // spawn the pathLineView
+        LayoutParams params = new LayoutParams(TILE_SIZE * ROWS - MARGIN, TILE_SIZE * COLS);
+        ArenaTileView mostTopLeftTile = getTileFromIdx(0, 0);
+        arenaPathLineView = new ArenaPathLineView(getContext(), mostTopLeftTile.getCoordX(), mostTopLeftTile.getCoordY(), this);
+        addView(arenaPathLineView, params);
+
         // spawn robot at bottom left
         Point idxPoint = getIdxFromAxis(ROBOT_START_AXIS);
         updateRobotPosition(idxPoint.x, idxPoint.y, 0);
 
         // add some obstacles
-//        addObstacle(getTileFromAxis(10, 37), 'n');
-//        addObstacle(getTileFromAxis(20, 33), 's');
-//        addObstacle(getTileFromAxis(30, 20), 'n');
-//        addObstacle(getTileFromAxis(43, 10), 'w');
-//        addObstacle(getTileFromAxis(25, 32), 'n');
-        for (String obsData : getStoredObstacles()) {
-            String[] parts = obsData.split(",");
-            ObstacleView obs = addObstacle(getTileFromIdx(Integer.parseInt(parts[1]), Integer.parseInt(parts[2])), parts[3].charAt(0));
-            obs.setId(Integer.parseInt(parts[0]));
-            obs.setImageTargetId(Integer.parseInt(parts[4]));
+        if (getStoredObstacles().isEmpty()) {
+            addObstacle(getTileFromAxis(10, 37), 'n');
+            addObstacle(getTileFromAxis(20, 33), 's');
+            addObstacle(getTileFromAxis(30, 20), 'n');
+            addObstacle(getTileFromAxis(43, 10), 'w');
+            addObstacle(getTileFromAxis(25, 32), 'n');
+        } else {
+            for (String obsData : getStoredObstacles()) {
+                String[] parts = obsData.split(",");
+                ObstacleView obs = addObstacle(getTileFromIdx(Integer.parseInt(parts[1]), Integer.parseInt(parts[2])), parts[3].charAt(0));
+                obs.setId(Integer.parseInt(parts[0]));
+                obs.setImageTargetId(Integer.parseInt(parts[4]));
+            }
         }
 
         invalidate();
@@ -196,31 +209,6 @@ public class ArenaView extends RelativeLayout {
             Point point = mCoordsY[m];
             if ((ROWS - m - 1) % 5 == 0)
                 canvas.drawText(String.valueOf(ROWS - m - 1), point.x, point.y, mBlackPaintBrushFill);
-        }
-
-        // draw calculated path lines if exists
-//        if (this.calculatedPath != null) {
-//            for (int i = 0; i < this.calculatedPath.length(); i++) {
-//                try {
-//                    JSONObject pathObjFrom = this.calculatedPath.getJSONObject(i);
-//                    ArenaTileView fromTile = getTileFromAxis(pathObjFrom.getInt("x"), pathObjFrom.getInt("y"));
-//                    if ((i + 1) < this.calculatedPath.length()) {
-//                        JSONObject pathObjTo = this.calculatedPath.getJSONObject(i + 1);
-//                        ArenaTileView toTile = getTileFromAxis(pathObjTo.getInt("x"), pathObjTo.getInt("y"));
-//                        canvas.drawLine(fromTile.getCoordX() + TILE_SIZE / 2, fromTile.getCoordY() + TILE_SIZE / 2, toTile.getCoordX() + TILE_SIZE / 2, toTile.getCoordY() + TILE_SIZE / 2, mRedPaintBrushFill);
-//                    }
-//                } catch (JSONException e) {
-//                    throw new RuntimeException(e);
-//                }
-//            }
-//        }
-        if (!listPathTile.isEmpty()) {
-            for (ArenaTileView fromTile : listPathTile) {
-                if (listPathTile.indexOf(fromTile) + 1 < listPathTile.size()) {
-                    ArenaTileView toTile = listPathTile.get(listPathTile.indexOf(fromTile) + 1);
-                    canvas.drawLine(fromTile.getCoordX() + TILE_SIZE / 2, fromTile.getCoordY() + TILE_SIZE / 2, toTile.getCoordX() + TILE_SIZE / 2, toTile.getCoordY() + TILE_SIZE / 2, mRedPaintBrushFill);
-                }
-            }
         }
     }
 
@@ -337,6 +325,10 @@ public class ArenaView extends RelativeLayout {
 
             if (tile != null && tile.getObstacle() != null) {
                 tile.getObstacle().setImageTargetId(imageId);
+
+                // set robot location to infront of obstacle
+                if (this.mainActivity.mainMenu != null && this.mainActivity.mainMenu.getItem(9).isChecked())
+                    updateRobotPositionToObs(tile.getObstacle());
             }
 
             String imageDirStr = image.getString("d");
@@ -395,6 +387,33 @@ public class ArenaView extends RelativeLayout {
         } catch (Exception ignored) {}
     }
 
+    /** bind robot position to a specific obstacle, side must be set */
+    private void updateRobotPositionToObs(ObstacleView obstacle) {
+        if (obstacle.getImageDir() == 'x') return;
+
+        Point obsAxisPoint = obstacle.getAxisFromIdx();
+
+        ArenaTileView tile;
+        switch (obstacle.getImageDir()) {
+            case 'n':
+                tile = getTileFromAxis(obsAxisPoint.x, obsAxisPoint.y + 4);
+                updateRobotPosition(tile.getIdxX(), tile.getIdxY(), 180); // robot face down
+                break;
+            case 'e':
+                tile = getTileFromAxis(obsAxisPoint.x + 4, obsAxisPoint.y);
+                updateRobotPosition(tile.getIdxX(), tile.getIdxY(), 270); // robot face down
+                break;
+            case 's':
+                tile = getTileFromAxis(obsAxisPoint.x, obsAxisPoint.y - 4);
+                updateRobotPosition(tile.getIdxX(), tile.getIdxY(), 0); // robot face down
+                break;
+            case 'w':
+                tile = getTileFromAxis(obsAxisPoint.x - 4, obsAxisPoint.y);
+                updateRobotPosition(tile.getIdxX(), tile.getIdxY(), 90); // robot face down
+                break;
+        }
+    }
+
     /** x&y are idx!!! */
     public void updateRobotPosition(int x, int y, int dirInt) {
         if (mRobot == null || mRobot.getIdxX() != x || mRobot.getIdxY() != y) {
@@ -430,6 +449,7 @@ public class ArenaView extends RelativeLayout {
 
         // update robot direction if changes
         char dir = getDirFromInt(dirInt);
+        Log.e("ArenaView", "robotDActual: " + mRobot.getDir());
         if (!mRobot.getDir().equals(dir)) {
             mRobot.setRotation(dirInt);
             mRobot.setDirInt(dirInt);
@@ -764,8 +784,12 @@ public class ArenaView extends RelativeLayout {
             throw new RuntimeException(e);
         }
 
+        if (this.arenaPathLineView != null) {
+            this.arenaPathLineView.drawPathLines();
+        }
+
         // send path to robot
-        this.mainActivity.sendMessageToAMD(pathObj.toString());
+        this.mainActivity.sendMessageToAMD(pathObj.toString().replaceAll("\n", "").replaceAll("\r", ""));
         Toast.makeText(mainActivity, "Using algoSQ, local calculated path sent to robot", Toast.LENGTH_SHORT).show();
 
         Log.e("algo", "path size: " + this.calculatedPath.length());
@@ -775,6 +799,8 @@ public class ArenaView extends RelativeLayout {
         // move robot for simulation
         if (this.mainActivity.cbSimulation.isChecked())
             moveRobotFromPath(this.calculatedPath, 100);
+
+        this.mainActivity.mStart.setEnabled(true);
     }
 
     public void calculatePathFromApi() {
@@ -858,55 +884,64 @@ public class ArenaView extends RelativeLayout {
             throw new RuntimeException(e);
         }
 
-        drawPathLines();
-
-        // send path to robot
-        JSONObject transferObj = new JSONObject();
-        try {
-            transferObj.put("path", this.calculatedPath);
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
+        if (this.arenaPathLineView != null) {
+            this.arenaPathLineView.drawPathLines();
         }
 
-        this.mainActivity.sendMessageToAMD(transferObj.toString());
+        this.mainActivity.sendMessageToAMD(result.toString().replace("\n", "").replace("\r", ""));
         Toast.makeText(mainActivity, "Sent calculated path from server to robot", Toast.LENGTH_SHORT).show();
 
         startTimer();
 
         if (this.mainActivity.cbSimulation.isChecked())
             moveRobotFromPath(this.calculatedPath, 1000);
+
+        this.mainActivity.mStart.setEnabled(true);
     }
 
     private void startTimer() {
         this.mainActivity.mStart.setText("STOP");
+        TextView tvTimer = (TextView) ArenaView.this.mainActivity.findViewById(R.id.tv_timer);
 
-        this.timerRunnable = new Runnable() {
-            private long timerMs = 0;
+//        this.timerRunnable = new Runnable() {
+//            private long timerMs = 0;
+//
+//            @Override
+//            public void run() {
+//                TextView tvTimer = (TextView) ArenaView.this.mainActivity.findViewById(R.id.tv_timer);
+//
+//                long sec = timerMs / 1000;
+//                long ms = timerMs % 1000;
+//                long min = sec / 60;
+//
+//                tvTimer.setText(min + ":" + sec + ":" + ms);
+//
+//                timerMs += 100;
+//
+//                if (timerHandler != null)
+//                    timerHandler.postDelayed(ArenaView.this.timerRunnable, 100);
+//            }
+//        };
+//
+//        this.timerHandler = new Handler();
+//        timerHandler.postDelayed(this.timerRunnable, 100);
 
-            @Override
-            public void run() {
-                TextView tvTimer = (TextView) ArenaView.this.mainActivity.findViewById(R.id.tv_timer);
-
-                long sec = timerMs / 1000;
-                long ms = timerMs % 1000;
-                long min = sec / 60;
-
-                tvTimer.setText(min + ":" + sec + ":" + ms);
-
-                timerMs += 100;
-
-                if (timerHandler != null)
-                    timerHandler.postDelayed(ArenaView.this.timerRunnable, 100);
+        timer = new CountUpTimer(10 * 60 * 1000) {
+            public void onTick(int second) {
+                tvTimer.setText(String.valueOf(second) + "s");
             }
         };
 
-        this.timerHandler = new Handler();
-        timerHandler.postDelayed(this.timerRunnable, 100);
+        timer.start();
     }
 
     public void stopTimer() {
         this.moveRobotHandler = null;
         this.timerHandler = null;
+        if (this.timer != null) {
+            this.timer.cancel();
+            this.timer = null;
+        }
         this.mainActivity.mStart.setText("START");
     }
 
@@ -929,6 +964,7 @@ public class ArenaView extends RelativeLayout {
                 Point idxPoint;
                 try {
                     idxPoint = getIdxFromAxis(new Point(obj.getInt("x"), obj.getInt("y")));
+                    Log.e("ArenaView", "robotD: " + getIntFromDirStr(obj.getString("d")));
                     updateRobotPosition(idxPoint.x, idxPoint.y, getIntFromDirStr(obj.getString("d")));
                 } catch (JSONException e) {
                     throw new RuntimeException(e);
@@ -1049,5 +1085,143 @@ public class ArenaView extends RelativeLayout {
         SharedPreferences sh = this.mainActivity.getSharedPreferences("MySharedPref", MODE_PRIVATE);
 
         return sh.getStringSet("obstacles", new HashSet<>());
+    }
+
+    public void moveRobotForward() {
+        if (this.mRobot == null) return;
+
+        Point axisPoint = mRobot.getAxisFromIdx();
+
+        switch (mRobot.getDirInt()) {
+            case 0:
+                // when facing up
+                axisPoint.y += this.mainActivity.getRobotStraightDistancePerMove();
+                break;
+            case 90:
+                // when facing right
+                axisPoint.x += this.mainActivity.getRobotStraightDistancePerMove();
+                break;
+            case 180:
+                // when facing down
+                axisPoint.y -= this.mainActivity.getRobotStraightDistancePerMove();
+                break;
+            case 270:
+                // when facing left
+                axisPoint.x -= this.mainActivity.getRobotStraightDistancePerMove();
+                break;
+        }
+
+        Point idxPoint = getIdxFromAxis(axisPoint);
+        updateRobotPosition(idxPoint.x, idxPoint.y, mRobot.getDirInt());
+    }
+
+    public void moveRobotBackward() {
+        if (this.mRobot == null) return;
+
+        Point axisPoint = mRobot.getAxisFromIdx();
+
+        switch (mRobot.getDirInt()) {
+            case 0:
+                // when facing up
+                axisPoint.y -= this.mainActivity.getRobotStraightDistancePerMove();
+                break;
+            case 90:
+                // when facing right
+                axisPoint.x -= this.mainActivity.getRobotStraightDistancePerMove();
+                break;
+            case 180:
+                // when facing down
+                axisPoint.y += this.mainActivity.getRobotStraightDistancePerMove();
+                break;
+            case 270:
+                // when facing left
+                axisPoint.x += this.mainActivity.getRobotStraightDistancePerMove();
+                break;
+        }
+
+        Point idxPoint = getIdxFromAxis(axisPoint);
+        updateRobotPosition(idxPoint.x, idxPoint.y, mRobot.getDirInt());
+    }
+
+    public void moveRobotLeft() {
+        if (this.mRobot == null) return;
+
+        String distance = this.mainActivity.getRobotTurningDistancePerMove();
+        int xOffset = Integer.parseInt(distance.split(",")[0]);
+        int yOffset = Integer.parseInt(distance.split(",")[1]);
+        Point axisPoint = mRobot.getAxisFromIdx();
+
+        Point idxPoint;
+        switch (mRobot.getDirInt()) {
+            // when facing up
+            case 0:
+                axisPoint.x -= xOffset;
+                axisPoint.y += yOffset;
+                idxPoint = getIdxFromAxis(axisPoint);
+                updateRobotPosition(idxPoint.x, idxPoint.y, 270);
+                break;
+            // when facing right
+            case 90:
+                axisPoint.y += xOffset;
+                axisPoint.x += yOffset;
+                idxPoint = getIdxFromAxis(axisPoint);
+                updateRobotPosition(idxPoint.x, idxPoint.y, 0);
+                break;
+                // when facing down
+            case 180:
+                axisPoint.x += xOffset;
+                axisPoint.y -= yOffset;
+                idxPoint = getIdxFromAxis(axisPoint);
+                updateRobotPosition(idxPoint.x, idxPoint.y, 90);
+                break;
+            // when facing left
+            case 270:
+                axisPoint.y -= xOffset;
+                axisPoint.x -= yOffset;
+                idxPoint = getIdxFromAxis(axisPoint);
+                updateRobotPosition(idxPoint.x, idxPoint.y, 180);
+                break;
+        }
+    }
+
+    public void moveRobotRight() {
+        if (this.mRobot == null) return;
+
+        String distance = this.mainActivity.getRobotTurningDistancePerMove();
+        int xOffset = Integer.parseInt(distance.split(",")[0]);
+        int yOffset = Integer.parseInt(distance.split(",")[1]);
+        Point axisPoint = mRobot.getAxisFromIdx();
+
+        Point idxPoint;
+        switch (mRobot.getDirInt()) {
+            // when facing up
+            case 0:
+                axisPoint.x += xOffset;
+                axisPoint.y += yOffset;
+                idxPoint = getIdxFromAxis(axisPoint);
+                updateRobotPosition(idxPoint.x, idxPoint.y, 90);
+                break;
+            // when facing right
+            case 90:
+                axisPoint.y -= xOffset;
+                axisPoint.x += yOffset;
+                idxPoint = getIdxFromAxis(axisPoint);
+                updateRobotPosition(idxPoint.x, idxPoint.y, 180);
+                break;
+            // when facing down
+            case 180:
+                axisPoint.x -= xOffset;
+                axisPoint.y -= yOffset;
+                idxPoint = getIdxFromAxis(axisPoint);
+                updateRobotPosition(idxPoint.x, idxPoint.y, 270);
+                break;
+            // when facing left
+            case 270:
+                axisPoint.y += xOffset;
+                axisPoint.x -= yOffset;
+                idxPoint = getIdxFromAxis(axisPoint);
+                updateRobotPosition(idxPoint.x, idxPoint.y, 0);
+                break;
+        }
     }
 }
