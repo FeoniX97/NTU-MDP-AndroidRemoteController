@@ -75,6 +75,7 @@ public class ArenaView extends RelativeLayout {
     public CountUpTimer timer;
     private Runnable moveRobotRunnable;
     public JSONArray calculatedPath;
+    public JSONArray calculatedCommands;
 
     public ArenaView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -369,13 +370,37 @@ public class ArenaView extends RelativeLayout {
         int currentPathIdx;
         try {
             currentPathIdx = msgObj.getInt("currentPathIdx");
-            if (this.calculatedPath != null && currentPathIdx > -1 && currentPathIdx < this.calculatedPath.length()) {
-                JSONObject pathObj = this.calculatedPath.getJSONObject(currentPathIdx);
-                int x = pathObj.getInt("x");
-                int y = pathObj.getInt("y");
-                String d = pathObj.getString("d");
-                Point idxPoint = getIdxFromAxis(new Point(x, y));
-                updateRobotPosition(idxPoint.x, idxPoint.y, getDirIntFromStrForRobot(d));
+            // if (this.calculatedPath != null && currentPathIdx > -1 && currentPathIdx < this.calculatedPath.length()) {
+            //     JSONObject pathObj = this.calculatedPath.getJSONObject(currentPathIdx);
+            //     int x = pathObj.getInt("x");
+            //     int y = pathObj.getInt("y");
+            //     String d = pathObj.getString("d");
+            //     Point idxPoint = getIdxFromAxis(new Point(x, y));
+            //     updateRobotPosition(idxPoint.x, idxPoint.y, getDirIntFromStrForRobot(d));
+            
+            // }
+
+            JSONArray newPathArray = new JSONArray();
+            for (int i = 0; i < this.calculatedPath.size(); i++) {
+                newPathArray.put(this.calculatedPath.getJSONObject(i);
+            }
+            
+            String currentCommand = this.calculatedCommands.getString(currentPathIdx, "");
+            // JSONArray commandArrWithoutSnap = new JSONArray();
+            for (int i = 0; i < this.calculatedCommands.size(); i++) {
+                String command = this.calculatedCommands.getString(i, "");
+                if (command.contains("SNAP") || currentCommand.contains("FIN")) {
+                    addStringToJSONArr(i + 1, null, newPathArray);
+                }
+            }
+            
+            JSONObject pathObj = newPathArray.getJSONObject(currentPathIdx + 1);
+            if (pathObj != null) {
+               int x = pathObj.getInt("x");
+               int y = pathObj.getInt("y");
+               String d = pathObj.getString("d");
+               Point idxPoint = getIdxFromAxis(new Point(x, y));
+               updateRobotPosition(idxPoint.x, idxPoint.y, getDirIntFromStrForRobot(d));
             }
         } catch (JSONException ignored) {}
 
@@ -387,6 +412,13 @@ public class ArenaView extends RelativeLayout {
         } catch (Exception ignored) {}
     }
 
+    public void addStringToJSONArr(int pos, String data, JSONArray jsonArr){
+        for (int i = jsonArr.length(); i > pos; i--){
+            jsonArr.put(i, jsonArr.get(i-1));
+        }
+        jsonArr.put(pos, data);
+    }
+    
     /** bind robot position to a specific obstacle, side must be set */
     private void updateRobotPositionToObs(ObstacleView obstacle) {
         if (obstacle.getImageDir() == 'x') return;
@@ -876,6 +908,7 @@ public class ArenaView extends RelativeLayout {
         // convert field "d" value from dirStr to dirInt
         try {
             this.calculatedPath = result.getJSONArray("path");
+            this.calculatedCommands = result.getJSONArray("commands");
             for (int i = 0; i < this.calculatedPath.length(); i++) {
                 JSONObject pathObj = this.calculatedPath.getJSONObject(i);
                 pathObj.put("d", getDirStrFromIntForApi(pathObj.getInt("d")));
